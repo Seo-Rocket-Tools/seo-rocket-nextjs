@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { loadSoftwareData, getActiveSoftware, getSoftwareByTag, getAvailableTags, SoftwareData, SoftwareItem } from '../data/software-loader'
+import { loadSoftwareData, getActiveSoftware, getSoftwareByTag, getAvailableTags, SoftwareData, SoftwareItem, getFeaturedSoftware } from '../data/software-loader'
 
 export default function Home() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
@@ -10,8 +10,10 @@ export default function Home() {
   const [gridMousePosition, setGridMousePosition] = useState({ x: 0, y: 0 })
   const [softwareData, setSoftwareData] = useState<SoftwareData | null>(null)
   const [filteredSoftware, setFilteredSoftware] = useState<SoftwareItem[]>([])
-  const [activeFilter, setActiveFilter] = useState<string>('All')
+  const [activeFilter, setActiveFilter] = useState<string>('Featured')
   const [isLoading, setIsLoading] = useState(true)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
 
   // Load software data on component mount
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function Home() {
       try {
         const data = await loadSoftwareData()
         setSoftwareData(data)
-        setFilteredSoftware(getActiveSoftware(data))
+        setFilteredSoftware(getFeaturedSoftware(data))
         setIsLoading(false)
       } catch (error) {
         console.error('Failed to load software data:', error)
@@ -35,6 +37,88 @@ export default function Home() {
     setActiveFilter(filter)
     setFilteredSoftware(getSoftwareByTag(softwareData, filter))
   }
+
+  // Handle filter scroll
+  const scrollFilters = (direction: 'left' | 'right') => {
+    const container = document.getElementById('filter-container')
+    if (!container) return
+    
+    const scrollAmount = 200
+    const newScrollLeft = direction === 'left' 
+      ? Math.max(0, container.scrollLeft - scrollAmount)
+      : Math.min(container.scrollWidth - container.clientWidth, container.scrollLeft + scrollAmount)
+    
+    container.scrollTo({
+      left: newScrollLeft,
+      behavior: 'smooth'
+    })
+    
+    // Update scroll state after a brief delay to account for smooth scrolling
+    setTimeout(() => updateScrollState(), 300)
+  }
+
+  // Update scroll state
+  const updateScrollState = () => {
+    const container = document.getElementById('filter-container')
+    if (!container) return
+    
+    const isScrollable = container.scrollWidth > container.clientWidth
+    const isAtStart = container.scrollLeft <= 1 // Small threshold for floating point precision
+    const isAtEnd = container.scrollLeft >= container.scrollWidth - container.clientWidth - 1
+    
+    setCanScrollLeft(isScrollable && !isAtStart)
+    setCanScrollRight(isScrollable && !isAtEnd)
+    
+    console.log('Scroll State:', {
+      scrollLeft: container.scrollLeft,
+      scrollWidth: container.scrollWidth,
+      clientWidth: container.clientWidth,
+      isScrollable,
+      isAtStart,
+      isAtEnd,
+      canScrollLeft: isScrollable && !isAtStart,
+      canScrollRight: isScrollable && !isAtEnd
+    })
+  }
+
+  // Check scroll state on mount and resize
+  useEffect(() => {
+    if (!softwareData) return
+    
+    const container = document.getElementById('filter-container')
+    if (!container) return
+    
+    const handleScroll = () => {
+      console.log('Scroll event triggered')
+      updateScrollState()
+    }
+    
+    const handleResize = () => {
+      console.log('Resize event triggered')
+      updateScrollState()
+    }
+    
+    // Add event listeners
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', handleResize)
+    
+    // Initial check with multiple attempts to ensure container is ready
+    const checkInitialState = () => {
+      console.log('Checking initial scroll state')
+      updateScrollState()
+    }
+    
+    // Check immediately and with delays
+    checkInitialState()
+    setTimeout(checkInitialState, 100)
+    setTimeout(checkInitialState, 500)
+    setTimeout(checkInitialState, 1000)
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [softwareData])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, index: number) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -191,36 +275,90 @@ export default function Home() {
         onMouseLeave={handleGridMouseLeave}
       >
         <div className="max-w-7xl mx-auto">
-          {/* Filter Tabs */}
-          <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {getAvailableTags(softwareData).map((filter, index) => (
+          {/* Horizontal Scrollable Filter Tabs */}
+          <div className="relative mb-8 max-w-4xl mx-auto h-12 flex items-center">
+            {/* Scrollable Filter Container */}
+            <div 
+              id="filter-container"
+              className="flex gap-3 overflow-x-auto scrollbar-hide px-16 py-2 flex-1"
+              style={{
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}
+            >
+              {getAvailableTags(softwareData).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => handleFilterChange(filter)}
+                  className="px-4 py-2 text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 whitespace-nowrap flex-shrink-0"
+                  style={{
+                    backgroundColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.05)',
+                    borderColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.15)',
+                    color: activeFilter === filter ? '#000000' : '#d1d5db',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeFilter !== filter) {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                      e.currentTarget.style.color = '#ffffff';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeFilter !== filter) {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                      e.currentTarget.style.color = '#d1d5db';
+                    }
+                  }}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+
+            {/* Gradient Overlays - Lower z-index */}
+            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-black via-black/80 to-transparent z-[1] pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-black via-black/80 to-transparent z-[1] pointer-events-none" />
+
+            {/* Left Arrow - Highest z-index */}
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 z-[100]">
               <button
-                key={filter}
-                onClick={() => handleFilterChange(filter)}
-                className="px-4 py-2 text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105"
-                style={{
-                  backgroundColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.05)',
-                  borderColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.15)',
-                  color: activeFilter === filter ? '#000000' : '#d1d5db',
+                onClick={() => {
+                  console.log('Left arrow clicked, canScrollLeft:', canScrollLeft)
+                  scrollFilters('left')
                 }}
-                onMouseEnter={(e) => {
-                  if (activeFilter !== filter) {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-                    e.currentTarget.style.color = '#ffffff';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (activeFilter !== filter) {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                    e.currentTarget.style.color = '#d1d5db';
-                  }
-                }}
+                className={`w-10 h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                  canScrollLeft 
+                    ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 cursor-pointer' 
+                    : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
+                }`}
+                disabled={!canScrollLeft}
               >
-                {filter}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
               </button>
-            ))}
+            </div>
+
+            {/* Right Arrow - Highest z-index */}
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 z-[100]">
+              <button
+                onClick={() => {
+                  console.log('Right arrow clicked, canScrollRight:', canScrollRight)
+                  scrollFilters('right')
+                }}
+                className={`w-10 h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                  canScrollRight 
+                    ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 cursor-pointer' 
+                    : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
+                }`}
+                disabled={!canScrollRight}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Dynamic Grid - Shows all software in alternating 4-3-4-3 pattern */}

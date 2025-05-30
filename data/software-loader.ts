@@ -37,6 +37,7 @@ export function getFeaturedSoftware(data: SoftwareData): SoftwareItem[] {
 
 export function getSoftwareByTag(data: SoftwareData, tag: string): SoftwareItem[] {
   if (tag === 'All') return getActiveSoftware(data);
+  if (tag === 'Featured') return getFeaturedSoftware(data);
   return data.software.filter(item => 
     item.tags.includes(tag) && item.status === 'active'
   );

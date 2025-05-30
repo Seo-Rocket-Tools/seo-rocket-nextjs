@@ -37,7 +37,7 @@
       "tags": ["Chrome Extension", "Productivity"],
       "status": "active",
       "releaseDate": "2024-02-15",
-      "featured": true,
+      "featured": false,
       "url": "#",
       "pricing": "premium"
     },
@@ -61,7 +61,7 @@
       "tags": ["Productivity", "Free"],
       "status": "active",
       "releaseDate": "2024-03-15",
-      "featured": true,
+      "featured": false,
       "url": "#",
       "pricing": "free"
     },
@@ -85,7 +85,7 @@
       "tags": ["Productivity", "Chrome Extension"],
       "status": "active",
       "releaseDate": "2024-04-15",
-      "featured": true,
+      "featured": false,
       "url": "#",
       "pricing": "premium"
     },
@@ -121,7 +121,7 @@
       "tags": ["Chrome Extension", "Lead Generation"],
       "status": "active",
       "releaseDate": "2024-06-01",
-      "featured": true,
+      "featured": false,
       "url": "#",
       "pricing": "freemium"
     },
@@ -145,7 +145,7 @@
       "tags": ["Social Media", "Productivity"],
       "status": "active",
       "releaseDate": "2024-07-01",
-      "featured": true,
+      "featured": false,
       "url": "#",
       "pricing": "freemium"
     },
@@ -157,7 +157,7 @@
       "tags": ["Analytics", "Productivity"],
       "status": "active",
       "releaseDate": "2024-07-15",
-      "featured": true,
+      "featured": false,
       "url": "#",
       "pricing": "premium"
     },
@@ -175,10 +175,11 @@
     }
   ],
   "tags": [
+    "Featured",
+    "Free", 
     "All",
     "SEO",
     "Productivity",
-    "Free",
     "Chrome Extension",
     "WordPress Plugin",
     "AI",
