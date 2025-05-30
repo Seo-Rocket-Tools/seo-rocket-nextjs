@@ -1,11 +1,17 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
+import type { Metadata } from 'next'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'SEO Rocket - SaaS Landing Page',
   description: 'Boost your website rankings with SEO Rocket',
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 }
 
 export default function RootLayout({
