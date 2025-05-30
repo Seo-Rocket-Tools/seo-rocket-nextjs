@@ -1,57 +1,40 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { loadSoftwareData, getActiveSoftware, getSoftwareByTag, getAvailableTags, SoftwareData, SoftwareItem } from '../data/software-loader'
 
 export default function Home() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [isGridHovered, setIsGridHovered] = useState(false)
   const [gridMousePosition, setGridMousePosition] = useState({ x: 0, y: 0 })
+  const [softwareData, setSoftwareData] = useState<SoftwareData | null>(null)
+  const [filteredSoftware, setFilteredSoftware] = useState<SoftwareItem[]>([])
+  const [activeFilter, setActiveFilter] = useState<string>('All')
+  const [isLoading, setIsLoading] = useState(true)
 
-  const softwareTools = [
-    {
-      icon: "🚀",
-      name: "SEO Automator",
-      description: "Automate keyword research, rank tracking, and competitor analysis with our powerful SEO toolkit.",
-      tags: ["SEO", "Productivity"]
-    },
-    {
-      icon: "📊",
-      name: "Analytics Dashboard",
-      description: "Centralized reporting dashboard that pulls data from all your marketing channels in real-time.",
-      tags: ["Productivity", "Free"]
-    },
-    {
-      icon: "🎯",
-      name: "Lead Generator",
-      description: "Chrome extension that finds contact information and builds prospect lists while you browse.",
-      tags: ["Chrome Extension", "Productivity"]
-    },
-    {
-      icon: "📱",
-      name: "Social Scheduler",
-      description: "WordPress plugin for automated social media posting across multiple platforms and clients.",
-      tags: ["WordPress Plugin", "Productivity"]
-    },
-    {
-      icon: "💬",
-      name: "Client Communicator",
-      description: "Streamline client communication with automated reports, proposals, and project updates.",
-      tags: ["Productivity", "Free"]
-    },
-    {
-      icon: "⚡",
-      name: "Workflow Engine",
-      description: "Build custom automation workflows that connect your favorite marketing tools and apps.",
-      tags: ["Productivity", "SEO"]
-    },
-    {
-      icon: "🔗",
-      name: "API Connector",
-      description: "Seamlessly integrate multiple platforms and automate data flow between your favorite tools.",
-      tags: ["Productivity", "Chrome Extension"]
+  // Load software data on component mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const data = await loadSoftwareData()
+        setSoftwareData(data)
+        setFilteredSoftware(getActiveSoftware(data))
+        setIsLoading(false)
+      } catch (error) {
+        console.error('Failed to load software data:', error)
+        setIsLoading(false)
+      }
     }
-  ];
+    loadData()
+  }, [])
+
+  // Handle filter changes
+  const handleFilterChange = (filter: string) => {
+    if (!softwareData) return
+    setActiveFilter(filter)
+    setFilteredSoftware(getSoftwareByTag(softwareData, filter))
+  }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, index: number) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -97,6 +80,54 @@ export default function Home() {
     const shadowY = mousePosition.y / 8
     
     return `${shadowX}px ${shadowY + 25}px 50px rgba(0, 0, 0, 0.5), 0 10px 40px rgba(255, 255, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
+  }
+
+  // Calculate grid layout - Alternating 4-3-4-3 pattern
+  const softwareRows: { cards: SoftwareItem[], isFullRow: boolean }[] = []
+  let currentIndex = 0
+  let rowIndex = 0
+  
+  while (currentIndex < filteredSoftware.length) {
+    // Alternate between 4 cards (even rows) and 3 cards (odd rows)
+    const cardsInThisRow = rowIndex % 2 === 0 ? 4 : 3
+    const endIndex = Math.min(currentIndex + cardsInThisRow, filteredSoftware.length)
+    
+    softwareRows.push({
+      cards: filteredSoftware.slice(currentIndex, endIndex),
+      isFullRow: rowIndex % 2 === 0 // true for 4-card rows, false for 3-card rows
+    })
+    
+    currentIndex = endIndex
+    rowIndex++
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading software...</p>
+        </div>
+      </main>
+    )
+  }
+
+  // Show error state
+  if (!softwareData) {
+    return (
+      <main className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">Failed to load software data</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-white text-black rounded hover:bg-gray-200 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -153,7 +184,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Software Grid Section - Clean Masonry Layout */}
+      {/* Software Grid Section - Dynamic Layout */}
       <section 
         className="px-6 pb-12 relative z-10"
         onMouseMove={handleGridMouseMove}
@@ -162,24 +193,25 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           {/* Filter Tabs */}
           <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {["All", "SEO", "Productivity", "Free", "Chrome Extension", "WordPress Plugin"].map((filter, index) => (
+            {getAvailableTags(softwareData).map((filter, index) => (
               <button
-                key={index}
+                key={filter}
+                onClick={() => handleFilterChange(filter)}
                 className="px-4 py-2 text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105"
                 style={{
-                  backgroundColor: index === 0 ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.05)',
-                  borderColor: index === 0 ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.15)',
-                  color: index === 0 ? '#000000' : '#d1d5db',
+                  backgroundColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.05)',
+                  borderColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.15)',
+                  color: activeFilter === filter ? '#000000' : '#d1d5db',
                 }}
                 onMouseEnter={(e) => {
-                  if (index !== 0) {
+                  if (activeFilter !== filter) {
                     e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
                     e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
                     e.currentTarget.style.color = '#ffffff';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (index !== 0) {
+                  if (activeFilter !== filter) {
                     e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
                     e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
                     e.currentTarget.style.color = '#d1d5db';
@@ -191,177 +223,106 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Row 1: 4 cards full width */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            {softwareTools.slice(0, 4).map((tool, index) => (
-              <div 
-                key={index}
-                className="rounded-lg p-6 transition-all duration-500 ease-out cursor-pointer relative"
-                style={{
-                  backgroundColor: hoveredCard === index ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
-                  border: `1px solid ${hoveredCard === index ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
-                  transform: getCardTransform(index),
-                  boxShadow: getCardShadow(index),
-                  transformStyle: 'preserve-3d',
-                }}
-                onMouseMove={(e) => handleMouseMove(e, index)}
-                onMouseLeave={handleMouseLeave}
-              >
-                {/* New Tab Icon - Only appears on hover */}
-                {hoveredCard === index && (
-                  <img 
-                    src="/newtab.svg" 
-                    alt="Open in new tab" 
-                    className="absolute top-4 right-4 w-4 h-4 transition-all duration-500"
-                    style={{
-                      transform: 'translateZ(15px)',
-                      filter: 'brightness(0) saturate(100%) invert(100%) opacity(0.8)',
-                    }}
-                  />
-                )}
-
-                {/* Icon */}
-                <div 
-                  className="text-4xl mb-4 transition-transform duration-500"
-                  style={{
-                    transform: hoveredCard === index ? 'translateZ(12px)' : 'translateZ(0px)',
-                  }}
-                >
-                  {tool.icon}
-                </div>
-                
-                {/* Software Name */}
-                <h3 
-                  className="text-xl font-semibold text-white mb-3 transition-transform duration-500"
-                  style={{
-                    transform: hoveredCard === index ? 'translateZ(8px)' : 'translateZ(0px)',
-                  }}
-                >
-                  {tool.name}
-                </h3>
-                
-                {/* Description */}
-                <p 
-                  className="text-gray-400 text-sm leading-relaxed mb-4 transition-transform duration-500"
-                  style={{
-                    transform: hoveredCard === index ? 'translateZ(6px)' : 'translateZ(0px)',
-                  }}
-                >
-                  {tool.description}
-                </p>
-                
-                {/* Tags */}
-                <div 
-                  className="flex flex-wrap gap-2 transition-transform duration-500"
-                  style={{
-                    transform: hoveredCard === index ? 'translateZ(10px)' : 'translateZ(0px)',
-                  }}
-                >
-                  {tool.tags.map((tag, tagIndex) => (
-                    <span 
-                      key={tagIndex}
-                      className="px-3 py-1 text-xs font-medium rounded-full border"
+          {/* Dynamic Grid - Shows all software in alternating 4-3-4-3 pattern */}
+          <div className="space-y-4">
+            {softwareRows.map((row, rowIndex) => (
+              <div key={rowIndex} className={`grid gap-4 ${
+                row.cards.length === 1 ? 'grid-cols-1 max-w-md mx-auto' :
+                row.cards.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto' :
+                row.cards.length === 3 ? 'grid-cols-1 md:grid-cols-3 max-w-4xl mx-auto' :
+                'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+              }`}>
+                {row.cards.map((tool, cardIndex) => {
+                  // Calculate the global index by summing up cards from previous rows
+                  let globalIndex = 0
+                  for (let i = 0; i < rowIndex; i++) {
+                    globalIndex += softwareRows[i].cards.length
+                  }
+                  globalIndex += cardIndex
+                  
+                  return (
+                    <div 
+                      key={tool.id}
+                      className="rounded-lg p-6 transition-all duration-500 ease-out cursor-pointer relative flex flex-col h-full"
                       style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        borderColor: 'rgba(255, 255, 255, 0.2)',
-                        color: '#ffffff',
+                        backgroundColor: hoveredCard === globalIndex ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                        border: `1px solid ${hoveredCard === globalIndex ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
+                        transform: getCardTransform(globalIndex),
+                        boxShadow: getCardShadow(globalIndex),
+                        transformStyle: 'preserve-3d',
                       }}
+                      onMouseMove={(e) => handleMouseMove(e, globalIndex)}
+                      onMouseLeave={handleMouseLeave}
                     >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+                      {/* New Tab Icon - Only appears on hover */}
+                      {hoveredCard === globalIndex && (
+                        <img 
+                          src="/newtab.svg" 
+                          alt="Open in new tab" 
+                          className="absolute top-4 right-4 w-4 h-4 transition-all duration-500"
+                          style={{
+                            transform: 'translateZ(15px)',
+                            filter: 'brightness(0) saturate(100%) invert(100%) opacity(0.8)',
+                          }}
+                        />
+                      )}
+
+                      {/* Icon */}
+                      <div 
+                        className="text-4xl mb-4 transition-transform duration-500"
+                        style={{
+                          transform: hoveredCard === globalIndex ? 'translateZ(12px)' : 'translateZ(0px)',
+                        }}
+                      >
+                        {tool.icon}
+                      </div>
+                      
+                      {/* Software Name */}
+                      <h3 
+                        className="text-xl font-semibold text-white mb-3 transition-transform duration-500"
+                        style={{
+                          transform: hoveredCard === globalIndex ? 'translateZ(8px)' : 'translateZ(0px)',
+                        }}
+                      >
+                        {tool.name}
+                      </h3>
+                      
+                      {/* Description */}
+                      <p 
+                        className="text-gray-400 text-sm leading-relaxed mb-4 flex-grow transition-transform duration-500"
+                        style={{
+                          transform: hoveredCard === globalIndex ? 'translateZ(6px)' : 'translateZ(0px)',
+                        }}
+                      >
+                        {tool.description}
+                      </p>
+                      
+                      {/* Tags - Always at the bottom */}
+                      <div 
+                        className="flex flex-wrap gap-2 mt-auto transition-transform duration-500"
+                        style={{
+                          transform: hoveredCard === globalIndex ? 'translateZ(10px)' : 'translateZ(0px)',
+                        }}
+                      >
+                        {tool.tags.map((tag, tagIndex) => (
+                          <span 
+                            key={tagIndex}
+                            className="px-3 py-1 text-xs font-medium rounded-full border"
+                            style={{
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                              borderColor: 'rgba(255, 255, 255, 0.2)',
+                              color: '#ffffff',
+                            }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             ))}
-          </div>
-
-          {/* Row 2: 3 cards centered */}
-          <div className="flex justify-center">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl w-full">
-              {softwareTools.slice(4, 7).map((tool, index) => {
-                const actualIndex = index + 4; // Adjust for hover state
-                return (
-                  <div 
-                    key={actualIndex}
-                    className="rounded-lg p-6 transition-all duration-500 ease-out cursor-pointer relative"
-                    style={{
-                      backgroundColor: hoveredCard === actualIndex ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
-                      border: `1px solid ${hoveredCard === actualIndex ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
-                      transform: getCardTransform(actualIndex),
-                      boxShadow: getCardShadow(actualIndex),
-                      transformStyle: 'preserve-3d',
-                    }}
-                    onMouseMove={(e) => handleMouseMove(e, actualIndex)}
-                    onMouseLeave={handleMouseLeave}
-                  >
-                    {/* New Tab Icon - Only appears on hover */}
-                    {hoveredCard === actualIndex && (
-                      <img 
-                        src="/newtab.svg" 
-                        alt="Open in new tab" 
-                        className="absolute top-4 right-4 w-4 h-4 transition-all duration-500"
-                        style={{
-                          transform: 'translateZ(15px)',
-                          filter: 'brightness(0) saturate(100%) invert(100%) opacity(0.8)',
-                        }}
-                      />
-                    )}
-
-                    {/* Icon */}
-                    <div 
-                      className="text-4xl mb-4 transition-transform duration-500"
-                      style={{
-                        transform: hoveredCard === actualIndex ? 'translateZ(12px)' : 'translateZ(0px)',
-                      }}
-                    >
-                      {tool.icon}
-                    </div>
-                    
-                    {/* Software Name */}
-                    <h3 
-                      className="text-xl font-semibold text-white mb-3 transition-transform duration-500"
-                      style={{
-                        transform: hoveredCard === actualIndex ? 'translateZ(8px)' : 'translateZ(0px)',
-                      }}
-                    >
-                      {tool.name}
-                    </h3>
-                    
-                    {/* Description */}
-                    <p 
-                      className="text-gray-400 text-sm leading-relaxed mb-4 transition-transform duration-500"
-                      style={{
-                        transform: hoveredCard === actualIndex ? 'translateZ(6px)' : 'translateZ(0px)',
-                      }}
-                    >
-                      {tool.description}
-                    </p>
-                    
-                    {/* Tags */}
-                    <div 
-                      className="flex flex-wrap gap-2 transition-transform duration-500"
-                      style={{
-                        transform: hoveredCard === actualIndex ? 'translateZ(10px)' : 'translateZ(0px)',
-                      }}
-                    >
-                      {tool.tags.map((tag, tagIndex) => (
-                        <span 
-                          key={tagIndex}
-                          className="px-3 py-1 text-xs font-medium rounded-full border"
-                          style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            borderColor: 'rgba(255, 255, 255, 0.2)',
-                            color: '#ffffff',
-                          }}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
       </section>
