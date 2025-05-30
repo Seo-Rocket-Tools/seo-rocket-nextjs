@@ -267,25 +267,25 @@ export default function Home() {
       </div>
 
       {/* Header Section */}
-      <section className="px-6 py-12 relative z-10">
-        <div className="max-w-6xl mx-auto text-center space-y-8">
+      <section className="px-4 sm:px-6 py-8 sm:py-12 relative z-10">
+        <div className="max-w-6xl mx-auto text-center space-y-6 sm:space-y-8">
           {/* Logo */}
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <img
               src="/logo-light.svg"
               alt="SEO Rocket"
-              className="mx-auto w-[200px] h-[60px] object-contain"
+              className="mx-auto w-[160px] sm:w-[200px] h-[48px] sm:h-[60px] object-contain"
             />
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-4 sm:mb-6">
             Automate Your
             <span className="block text-gray-400">Digital Workflow</span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed mb-16">
+          <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed mb-12 sm:mb-16 px-4 sm:px-0">
             Powerful web apps, Chrome extensions, and WordPress plugins designed for 
             <span className="text-white font-medium"> digital marketing agencies</span> and 
             <span className="text-white font-medium"> virtual assistants</span> who demand efficiency.
@@ -295,17 +295,17 @@ export default function Home() {
 
       {/* Software Grid Section - Dynamic Layout */}
       <section 
-        className="px-6 pb-12 relative z-10"
+        className="px-4 sm:px-6 pb-8 sm:pb-12 relative z-10"
         onMouseMove={handleGridMouseMove}
         onMouseLeave={handleGridMouseLeave}
       >
         <div className="max-w-7xl mx-auto">
           {/* Horizontal Scrollable Filter Tabs */}
-          <div className="relative mb-8 max-w-4xl mx-auto h-12 flex items-center">
+          <div className="relative mb-6 sm:mb-8 max-w-4xl mx-auto h-12 flex items-center">
             {/* Scrollable Filter Container */}
             <div 
               id="filter-container"
-              className="flex gap-3 overflow-x-auto scrollbar-hide px-16 py-2 flex-1"
+              className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide px-12 sm:px-16 py-2 flex-1"
               style={{
                 scrollbarWidth: 'none',
                 msOverflowStyle: 'none',
@@ -315,7 +315,7 @@ export default function Home() {
                 <button
                   key={filter}
                   onClick={() => handleFilterChange(filter)}
-                  className="px-4 py-2 text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 whitespace-nowrap flex-shrink-0"
+                  className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 whitespace-nowrap flex-shrink-0 min-h-[40px] flex items-center"
                   style={{
                     backgroundColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.05)',
                     borderColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.15)',
@@ -346,52 +346,52 @@ export default function Home() {
             <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-black via-black/80 to-transparent z-[1] pointer-events-none" />
 
             {/* Left Arrow - Highest z-index */}
-            <div className="absolute left-2 top-1/2 -translate-y-1/2 z-[100]">
+            <div className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-[100]">
               <button
                 onClick={() => {
                   console.log('Left arrow clicked, canScrollLeft:', canScrollLeft)
                   scrollFilters('left')
                 }}
-                className={`w-10 h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
                   canScrollLeft 
                     ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 cursor-pointer' 
                     : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
                 }`}
                 disabled={!canScrollLeft}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
             </div>
 
             {/* Right Arrow - Highest z-index */}
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 z-[100]">
+            <div className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-[100]">
               <button
                 onClick={() => {
                   console.log('Right arrow clicked, canScrollRight:', canScrollRight)
                   scrollFilters('right')
                 }}
-                className={`w-10 h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
                   canScrollRight 
                     ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 cursor-pointer' 
                     : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
                 }`}
                 disabled={!canScrollRight}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
           </div>
 
-          {/* Flex Layout - 4 cards per row with wrapping */}
-          <div className="flex flex-row flex-wrap justify-center items-stretch gap-3 max-w-7xl mx-auto">
+          {/* Flex Layout - Responsive cards with refined spacing */}
+          <div className="flex flex-row flex-wrap justify-center items-stretch gap-3 sm:gap-4 lg:gap-5 max-w-7xl mx-auto px-2 sm:px-0">
             {filteredSoftware.map((tool, index) => (
               <div 
                 key={tool.id}
-                className="w-[calc(25%-0.5625rem)] min-w-[280px] rounded-lg p-6 transition-all duration-500 ease-out cursor-pointer relative flex flex-col"
+                className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)] xl:w-[calc(25%-0.9375rem)] min-w-[280px] max-w-[320px] rounded-lg p-4 sm:p-6 transition-all duration-500 ease-out cursor-pointer relative flex flex-col"
                 style={{
                   backgroundColor: hoveredCard === index ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
                   border: `1px solid ${hoveredCard === index ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
@@ -422,7 +422,7 @@ export default function Home() {
 
                 {/* Icon */}
                 <div 
-                  className="text-4xl mb-4 transition-transform duration-500"
+                  className="text-3xl sm:text-4xl mb-3 sm:mb-4 transition-transform duration-500"
                   style={{
                     transform: hoveredCard === index ? 'translateZ(12px)' : 'translateZ(0px)',
                   }}
@@ -432,7 +432,7 @@ export default function Home() {
                 
                 {/* Software Name */}
                 <h3 
-                  className="text-xl font-semibold text-white mb-3 transition-transform duration-500"
+                  className="text-lg sm:text-xl font-semibold text-white mb-2 sm:mb-3 transition-transform duration-500"
                   style={{
                     transform: hoveredCard === index ? 'translateZ(8px)' : 'translateZ(0px)',
                   }}
@@ -442,7 +442,7 @@ export default function Home() {
                 
                 {/* Description */}
                 <p 
-                  className="text-gray-400 text-sm leading-relaxed mb-4 flex-grow transition-transform duration-500"
+                  className="text-gray-400 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 flex-grow transition-transform duration-500"
                   style={{
                     transform: hoveredCard === index ? 'translateZ(6px)' : 'translateZ(0px)',
                   }}
@@ -457,6 +457,20 @@ export default function Home() {
                     transform: hoveredCard === index ? 'translateZ(10px)' : 'translateZ(0px)',
                   }}
                 >
+                  {/* Free tag for free products */}
+                  {tool.pricing === 'free' && (
+                    <span 
+                      className="px-3 py-1 text-xs font-medium rounded-full border"
+                      style={{
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                        borderColor: 'rgba(34, 197, 94, 0.4)',
+                        color: '#22c55e',
+                      }}
+                    >
+                      Free
+                    </span>
+                  )}
+                  {/* Regular tags from database */}
                   {tool.tags.map((tag, tagIndex) => (
                     <span 
                       key={tagIndex}
@@ -478,15 +492,15 @@ export default function Home() {
       </section>
 
       {/* Footer Section */}
-      <footer className="px-6 py-12 pt-24 relative z-10">
+      <footer className="px-4 sm:px-6 py-8 sm:py-12 pt-16 sm:pt-24 relative z-10">
         <div className="max-w-7xl mx-auto">
           {/* Footer Links */}
-          <div className="flex flex-wrap justify-center gap-8 mb-8">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
             <a 
               href="https://seorocket.notion.site/seorocket/SEO-Rocket-Refund-Policy-cf90d3f98cdf4b0da5fe3e58bb75405a"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-500 hover:text-gray-300 transition-colors duration-300 text-sm font-medium"
+              className="text-gray-500 hover:text-gray-300 transition-colors duration-300 text-xs sm:text-sm font-medium"
             >
               Refund Policy
             </a>
@@ -494,7 +508,7 @@ export default function Home() {
               href="https://seorocket.notion.site/seorocket/SEO-Rocket-Refund-Policy-cf90d3f98cdf4b0da5fe3e58bb75405a"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-500 hover:text-gray-300 transition-colors duration-300 text-sm font-medium"
+              className="text-gray-500 hover:text-gray-300 transition-colors duration-300 text-xs sm:text-sm font-medium"
             >
               Privacy Policy
             </a>
@@ -502,7 +516,7 @@ export default function Home() {
               href="https://seorocket.notion.site/SEO-Rocket-Tools-Terms-and-Conditions-367d487eeb13438ab3bceecbfe2b27e6?pvs=4"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-500 hover:text-gray-300 transition-colors duration-300 text-sm font-medium"
+              className="text-gray-500 hover:text-gray-300 transition-colors duration-300 text-xs sm:text-sm font-medium"
             >
               Terms & Conditions
             </a>
@@ -510,7 +524,7 @@ export default function Home() {
 
           {/* Copyright */}
           <div className="text-center">
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-500 text-xs sm:text-sm px-4">
               All Rights Reserved Copyright 2025 - Designed by SEO Rocket. 💗
             </p>
           </div>
