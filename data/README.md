@@ -1,155 +1,170 @@
 # Software Management Guide
 
-This directory contains the dynamic software data for your SEO Rocket website. Here's how to manage your software releases efficiently.
+This directory contains the data loading utilities for your SEO Rocket website powered by Supabase.
 
 ## 📁 Files Overview
 
-- `software.json` - Main data file containing all software information
-- `software-loader.ts` - TypeScript utilities for loading and filtering data
-- `add-software.js` - Command-line script for adding new software
+- `software-loader.ts` - TypeScript utilities for loading and filtering data from Supabase
 - `README.md` - This documentation file
+
+## 🗄️ Data Management
+
+All software data is now managed through **Supabase database tables**:
+
+- **products** table - Contains all software information
+- **tags** table - Contains available filter tags
 
 ## 🚀 Adding New Software
 
-### Method 1: Using the CLI Script (Recommended)
+### Method 1: Supabase Dashboard (Recommended)
 
-```bash
-node data/add-software.js
+1. Go to your Supabase project dashboard
+2. Navigate to Table Editor > products
+3. Click "Insert" and add a new row with:
+   - `software_name`: Display name
+   - `slug`: URL-friendly identifier 
+   - `description`: Brief description
+   - `emoji`: Icon emoji
+   - `url`: Link to software
+   - `tags`: Comma-separated tags
+   - `published`: true for active software
+   - `featured`: true to show on homepage
+   - `free`: true if free, false if premium
+
+### Method 2: Admin Interface
+
+If your website has an admin interface, use that to add/edit software through the web interface.
+
+### Method 3: Direct SQL
+
+```sql
+INSERT INTO products (
+  software_name, slug, description, emoji, url, tags, 
+  published, featured, free
+) VALUES (
+  'Your Software Name',
+  'your-software-slug',
+  'Brief description of what the software does.',
+  '🎯',
+  'https://yourwebsite.com',
+  'Productivity, SEO',
+  true,
+  true,
+  false
+);
 ```
 
-This interactive script will prompt you for:
-- Software name
-- Icon (emoji)
-- Description  
-- Tags (comma-separated)
-- Pricing tier
-- URL (optional)
+## 🏷️ Database Schema
 
-### Method 2: Manual JSON Editing
+### Products Table
 
-1. Open `data/software.json`
-2. Add a new object to the `software` array:
+| Column | Type | Description | Example |
+|--------|------|-------------|---------|
+| `id` | UUID | Primary key (auto-generated) | - |
+| `software_name` | VARCHAR | Display name | "SEO Automator" |
+| `slug` | VARCHAR | Unique URL identifier | "seo-automator" |
+| `description` | TEXT | Brief description | "Automate your SEO tasks..." |
+| `emoji` | VARCHAR | Icon emoji | "🚀" |
+| `url` | VARCHAR | External link | "https://example.com" |
+| `tags` | TEXT | Comma-separated categories | "SEO, Productivity" |
+| `published` | BOOLEAN | Whether active/visible | `true` |
+| `featured` | BOOLEAN | Show on homepage | `true` |
+| `free` | BOOLEAN | Pricing model | `false` (premium) |
+| `image_url` | VARCHAR | Optional image | "" |
+| `created_at` | TIMESTAMPTZ | Creation date | auto-generated |
 
-```json
-{
-  "id": "unique-software-id",
-  "name": "Software Name",
-  "icon": "🎯",
-  "description": "Brief description of what the software does.",
-  "tags": ["Productivity", "SEO"],
-  "status": "active",
-  "releaseDate": "2025-01-27",
-  "featured": true,
-  "url": "#",
-  "pricing": "premium"
-}
+### Tags Table
+
+| Column | Type | Description | Example |
+|--------|------|-------------|---------|
+| `id` | UUID | Primary key | - |
+| `slug` | VARCHAR | URL-friendly identifier | "seo-tools" |
+| `name` | VARCHAR | Display name | "SEO Tools" |
+| `created_at` | TIMESTAMPTZ | Creation date | auto-generated |
+
+## 🏷️ Managing Tags
+
+### Adding New Tags
+
+```sql
+INSERT INTO tags (slug, name) VALUES ('new-category', 'New Category');
 ```
 
-3. Update the `metadata.totalSoftware` count
-4. Update `metadata.lastUpdated` to today's date
+### Available System Tags
 
-## 🏷️ Software Properties
-
-| Property | Type | Description | Options |
-|----------|------|-------------|---------|
-| `id` | string | Unique identifier (auto-generated from name) | - |
-| `name` | string | Display name of the software | - |
-| `icon` | string | Emoji icon for the card | Any emoji |
-| `description` | string | Brief description (keep under 150 chars) | - |
-| `tags` | array | Categories for filtering | See available tags below |
-| `status` | string | Current status | `active`, `beta`, `coming-soon`, `deprecated` |
-| `releaseDate` | string | Release date in YYYY-MM-DD format | - |
-| `featured` | boolean | Whether to show on homepage | `true`, `false` |
-| `url` | string | Link to the software (use "#" for placeholder) | - |
-| `pricing` | string | Pricing model | `free`, `premium`, `freemium` |
-
-## 🏷️ Available Tags
-
-Current tags (automatically managed):
-- `All` (special filter - shows all software)
-- `SEO`
-- `Productivity` 
-- `Free`
-- `Chrome Extension`
-- `WordPress Plugin`
-
-To add new tags:
-1. Add them to software objects
-2. They'll automatically appear in the tags array
-3. Filter buttons will update automatically
+These are built into the application:
+- `Featured` - Shows featured software
+- `Free` - Shows free software 
+- `All` - Shows all published software
 
 ## 🎯 Best Practices
 
 ### Writing Descriptions
-- Keep under 150 characters
-- Focus on the main benefit
+- Keep descriptions clear and concise
+- Focus on the main benefit or use case
 - Use action words (automate, streamline, generate, etc.)
-- Mention the target audience when relevant
+- Mention target audience when relevant
 
-### Choosing Icons
+### Choosing Emojis
 - Use relevant emojis that represent the software function
 - Popular choices: 🚀 🎯 📊 ⚡ 🔗 📱 💬 📈 🛠️ 🎨
 
 ### Organizing Tags
 - Use existing tags when possible
 - Keep tag names concise and clear
-- Consider your target audience's mental model
+- Consider creating specific tags for different software categories
 
-## 📊 Managing Software Lifecycle
+## 📊 Software Lifecycle Management
 
-### Launching New Software
-1. Add with `status: "coming-soon"`
-2. Update to `status: "beta"` during testing
-3. Change to `status: "active"` for full release
-4. Set `featured: true` for homepage visibility
+### Publishing Software
+1. Set `published: true` to make visible
+2. Set `featured: true` for homepage visibility
+3. Add relevant tags for discoverability
 
-### Retiring Software
-1. Change `status: "deprecated"` 
-2. Set `featured: false`
-3. Keep in data for historical records
+### Managing Visibility
+- `published: false` - Hides from all public views
+- `featured: false` - Removes from featured section
+- Use tags to organize by category or target audience
 
-## 🔧 Advanced Usage
+## 🔧 Technical Details
 
-### Custom Filtering
-The system supports complex filtering. You can:
-- Filter by multiple criteria
-- Show only featured software
-- Filter by pricing model
-- Sort by release date
+### Data Loading
+The `software-loader.ts` file provides functions for:
+- `loadSoftwareData()` - Load all software and metadata
+- `getActiveSoftware()` - Get only published software
+- `getFeaturedSoftware()` - Get featured software
+- `getSoftwareByTag()` - Filter by tag
+- `getAvailableTags()` - Get all available filter tags
 
-### API Integration (Future)
-The current system uses static JSON, but the loader can be easily modified to:
-- Fetch from a headless CMS (Strapi, Contentful)
-- Load from a database API
-- Integrate with GitHub for automated deployments
+### Real-time Updates
+Changes made in Supabase are reflected immediately on your website without requiring a rebuild or deployment.
 
 ## 🚨 Important Notes
 
-- Always validate JSON after manual edits
-- Keep the metadata updated for tracking
-- Test the website after adding new software
-- Use consistent formatting for dates (YYYY-MM-DD)
+- Ensure your Supabase environment variables are set correctly
+- Test changes in your Supabase dashboard before going live
+- Use consistent tag naming for better organization
+- Keep URLs updated and working
 
-## 📝 Example: Adding a New Software
+## 📝 Example: Adding New Software
 
-Let's say you're launching "Email Automation Pro":
+Adding "Email Automation Pro" via SQL:
 
-```json
-{
-  "id": "email-automation-pro",
-  "name": "Email Automation Pro", 
-  "icon": "📧",
-  "description": "Advanced email sequences and drip campaigns for marketing agencies with A/B testing.",
-  "tags": ["Productivity", "Email Marketing"],
-  "status": "active",
-  "releaseDate": "2025-01-27",
-  "featured": true,
-  "url": "https://emailautomationpro.com",
-  "pricing": "premium"
-}
+```sql
+INSERT INTO products (
+  software_name, slug, description, emoji, url, tags, 
+  published, featured, free
+) VALUES (
+  'Email Automation Pro',
+  'email-automation-pro', 
+  'Advanced email sequences and drip campaigns with A/B testing for marketing agencies.',
+  '📧',
+  'https://emailautomationpro.com',
+  'Productivity, Email Marketing, Marketing',
+  true,
+  true,
+  false
+);
 ```
 
-Don't forget to:
-1. Add "Email Marketing" to the tags array if it's new
-2. Update totalSoftware count
-3. Update lastUpdated date 
+This creates a premium, featured software entry that will appear in the Productivity, Email Marketing, and Marketing filter categories. 

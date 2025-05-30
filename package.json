@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "add-software": "node data/add-software.js"
+    "migrate-to-supabase": "npx ts-node scripts/migrate-to-supabase.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
     "next": "14.0.3",
     "react": "^18",
     "react-dom": "^18"
@@ -23,6 +24,7 @@
     "eslint-config-next": "14.0.3",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
-} 
+}

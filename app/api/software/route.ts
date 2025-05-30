@@ -1,18 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SoftwareData } from '../../../data/software-loader'
+import { loadSoftwareData } from '../../../data/software-loader'
+import { supabase, Product } from '../../../lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
-    const data: SoftwareData = await request.json()
+    const data = await request.json()
     
-    // On static hosting platforms like Netlify, we can't write to files
-    // Return success but log that this is a read-only environment
-    console.log('Static hosting detected - data cannot be persisted to file system')
-    console.log('Updated data would be:', JSON.stringify(data, null, 2))
+    // Check if Supabase is configured
+    if (!supabase) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Supabase not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.' 
+      })
+    }
+    
+    // Handle adding/updating software items in Supabase
+    if (data.software && Array.isArray(data.software)) {
+      for (const item of data.software) {
+        const productData: Partial<Product> = {
+          software_name: item.name,
+          slug: item.id,
+          description: item.description,
+          emoji: item.icon,
+          url: item.url,
+          tags: item.tags.join(', '),
+          published: item.status === 'active',
+          featured: item.featured,
+          free: item.pricing === 'free',
+          image_url: '' // Default empty, can be updated later
+        }
+
+        // Use upsert to insert or update
+        const { error } = await supabase
+          .from('products')
+          .upsert(productData, { onConflict: 'slug' })
+
+        if (error) {
+          console.error('Error upserting product:', error)
+          return NextResponse.json(
+            { success: false, message: 'Failed to save product data' },
+            { status: 500 }
+          )
+        }
+      }
+    }
     
     return NextResponse.json({ 
-      success: false, 
-      message: 'Static hosting detected - use localStorage fallback' 
+      success: true, 
+      message: 'Data saved successfully to Supabase' 
     })
   } catch (error) {
     console.error('Error in API route:', error)
@@ -25,8 +60,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    // Load the static data
-    const { loadSoftwareData } = await import('../../../data/software-loader')
+    // Load data from Supabase
     const data = await loadSoftwareData()
     return NextResponse.json(data)
   } catch (error) {

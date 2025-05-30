@@ -210,25 +210,6 @@ export default function Home() {
     return `${shadowX}px ${shadowY + 25}px 50px rgba(0, 0, 0, 0.5), 0 10px 40px rgba(255, 255, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
   }
 
-  // Calculate grid layout - Alternating 4-3-4-3 pattern
-  const softwareRows: { cards: SoftwareItem[], isFullRow: boolean }[] = []
-  let currentIndex = 0
-  let rowIndex = 0
-  
-  while (currentIndex < filteredSoftware.length) {
-    // Alternate between 4 cards (even rows) and 3 cards (odd rows)
-    const cardsInThisRow = rowIndex % 2 === 0 ? 4 : 3
-    const endIndex = Math.min(currentIndex + cardsInThisRow, filteredSoftware.length)
-    
-    softwareRows.push({
-      cards: filteredSoftware.slice(currentIndex, endIndex),
-      isFullRow: rowIndex % 2 === 0 // true for 4-card rows, false for 3-card rows
-    })
-    
-    currentIndex = endIndex
-    rowIndex++
-  }
-
   // Show loading state
   if (isLoading) {
     return (
@@ -405,109 +386,91 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Dynamic Grid - Shows all software in alternating 4-3-4-3 pattern */}
-          <div className="space-y-4">
-            {softwareRows.map((row, rowIndex) => (
-              <div key={rowIndex} className={`grid gap-4 ${
-                row.cards.length === 1 ? 'grid-cols-1 max-w-md mx-auto' :
-                row.cards.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto' :
-                row.cards.length === 3 ? 'grid-cols-1 md:grid-cols-3 max-w-4xl mx-auto' :
-                'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-              }`}>
-                {row.cards.map((tool, cardIndex) => {
-                  // Calculate the global index by summing up cards from previous rows
-                  let globalIndex = 0
-                  for (let i = 0; i < rowIndex; i++) {
-                    globalIndex += softwareRows[i].cards.length
+          {/* Flex Layout - 4 cards per row with wrapping */}
+          <div className="flex flex-row flex-wrap justify-center items-stretch gap-3 max-w-7xl mx-auto">
+            {filteredSoftware.map((tool, index) => (
+              <div 
+                key={tool.id}
+                className="w-[calc(25%-0.5625rem)] min-w-[280px] rounded-lg p-6 transition-all duration-500 ease-out cursor-pointer relative flex flex-col"
+                style={{
+                  backgroundColor: hoveredCard === index ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                  border: `1px solid ${hoveredCard === index ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
+                  transform: getCardTransform(index),
+                  boxShadow: getCardShadow(index),
+                  transformStyle: 'preserve-3d',
+                }}
+                onMouseMove={(e) => handleMouseMove(e, index)}
+                onMouseLeave={handleMouseLeave}
+                onClick={() => {
+                  if (tool.url && tool.url !== '#') {
+                    window.open(tool.url, '_blank', 'noopener,noreferrer')
                   }
-                  globalIndex += cardIndex
-                  
-                  return (
-                    <div 
-                      key={tool.id}
-                      className="rounded-lg p-6 transition-all duration-500 ease-out cursor-pointer relative flex flex-col h-full"
+                }}
+              >
+                {/* New Tab Icon - Only appears on hover */}
+                {hoveredCard === index && (
+                  <img 
+                    src="/newtab.svg" 
+                    alt="Open in new tab" 
+                    className="absolute top-4 right-4 w-4 h-4 transition-all duration-500"
+                    style={{
+                      transform: 'translateZ(15px)',
+                      filter: 'brightness(0) saturate(100%) invert(100%) opacity(0.8)',
+                    }}
+                  />
+                )}
+
+                {/* Icon */}
+                <div 
+                  className="text-4xl mb-4 transition-transform duration-500"
+                  style={{
+                    transform: hoveredCard === index ? 'translateZ(12px)' : 'translateZ(0px)',
+                  }}
+                >
+                  {tool.icon}
+                </div>
+                
+                {/* Software Name */}
+                <h3 
+                  className="text-xl font-semibold text-white mb-3 transition-transform duration-500"
+                  style={{
+                    transform: hoveredCard === index ? 'translateZ(8px)' : 'translateZ(0px)',
+                  }}
+                >
+                  {tool.name}
+                </h3>
+                
+                {/* Description */}
+                <p 
+                  className="text-gray-400 text-sm leading-relaxed mb-4 flex-grow transition-transform duration-500"
+                  style={{
+                    transform: hoveredCard === index ? 'translateZ(6px)' : 'translateZ(0px)',
+                  }}
+                >
+                  {tool.description}
+                </p>
+                
+                {/* Tags - Always at the bottom */}
+                <div 
+                  className="flex flex-wrap gap-2 mt-auto transition-transform duration-500"
+                  style={{
+                    transform: hoveredCard === index ? 'translateZ(10px)' : 'translateZ(0px)',
+                  }}
+                >
+                  {tool.tags.map((tag, tagIndex) => (
+                    <span 
+                      key={tagIndex}
+                      className="px-3 py-1 text-xs font-medium rounded-full border"
                       style={{
-                        backgroundColor: hoveredCard === globalIndex ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
-                        border: `1px solid ${hoveredCard === globalIndex ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
-                        transform: getCardTransform(globalIndex),
-                        boxShadow: getCardShadow(globalIndex),
-                        transformStyle: 'preserve-3d',
-                      }}
-                      onMouseMove={(e) => handleMouseMove(e, globalIndex)}
-                      onMouseLeave={handleMouseLeave}
-                      onClick={() => {
-                        if (tool.url && tool.url !== '#') {
-                          window.open(tool.url, '_blank', 'noopener,noreferrer')
-                        }
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                        color: '#ffffff',
                       }}
                     >
-                      {/* New Tab Icon - Only appears on hover */}
-                      {hoveredCard === globalIndex && (
-                        <img 
-                          src="/newtab.svg" 
-                          alt="Open in new tab" 
-                          className="absolute top-4 right-4 w-4 h-4 transition-all duration-500"
-                          style={{
-                            transform: 'translateZ(15px)',
-                            filter: 'brightness(0) saturate(100%) invert(100%) opacity(0.8)',
-                          }}
-                        />
-                      )}
-
-                      {/* Icon */}
-                      <div 
-                        className="text-4xl mb-4 transition-transform duration-500"
-                        style={{
-                          transform: hoveredCard === globalIndex ? 'translateZ(12px)' : 'translateZ(0px)',
-                        }}
-                      >
-                        {tool.icon}
-                      </div>
-                      
-                      {/* Software Name */}
-                      <h3 
-                        className="text-xl font-semibold text-white mb-3 transition-transform duration-500"
-                        style={{
-                          transform: hoveredCard === globalIndex ? 'translateZ(8px)' : 'translateZ(0px)',
-                        }}
-                      >
-                        {tool.name}
-                      </h3>
-                      
-                      {/* Description */}
-                      <p 
-                        className="text-gray-400 text-sm leading-relaxed mb-4 flex-grow transition-transform duration-500"
-                        style={{
-                          transform: hoveredCard === globalIndex ? 'translateZ(6px)' : 'translateZ(0px)',
-                        }}
-                      >
-                        {tool.description}
-                      </p>
-                      
-                      {/* Tags - Always at the bottom */}
-                      <div 
-                        className="flex flex-wrap gap-2 mt-auto transition-transform duration-500"
-                        style={{
-                          transform: hoveredCard === globalIndex ? 'translateZ(10px)' : 'translateZ(0px)',
-                        }}
-                      >
-                        {tool.tags.map((tag, tagIndex) => (
-                          <span 
-                            key={tagIndex}
-                            className="px-3 py-1 text-xs font-medium rounded-full border"
-                            style={{
-                              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                              borderColor: 'rgba(255, 255, 255, 0.2)',
-                              color: '#ffffff',
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
