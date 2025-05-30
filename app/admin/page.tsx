@@ -38,13 +38,28 @@ export default function Dashboard() {
   // Load software data
   useEffect(() => {
     if (isAuthenticated) {
-      loadSoftwareData().then(data => {
-        setSoftwareData(data)
-        setIsLoading(false)
-      }).catch(error => {
-        console.error('Failed to load data:', error)
-        setIsLoading(false)
-      })
+      const loadData = async () => {
+        try {
+          // First check localStorage for saved data (static hosting fallback)
+          const savedData = localStorage.getItem('seo-rocket-software-data')
+          if (savedData) {
+            console.log('Loading data from localStorage')
+            setSoftwareData(JSON.parse(savedData))
+            setIsLoading(false)
+            return
+          }
+
+          // Fallback to original data loading
+          const data = await loadSoftwareData()
+          setSoftwareData(data)
+          setIsLoading(false)
+        } catch (error) {
+          console.error('Failed to load data:', error)
+          setIsLoading(false)
+        }
+      }
+      
+      loadData()
     }
   }, [isAuthenticated])
 
@@ -71,7 +86,7 @@ export default function Dashboard() {
     localStorage.removeItem('seo-rocket-admin-auth')
   }
 
-  // Save software data to JSON (in real app, this would be an API call)
+  // Save software data to JSON (fallback to localStorage on static hosting)
   const saveSoftwareData = async (newData: SoftwareData) => {
     try {
       const response = await fetch('/api/software', {
@@ -88,11 +103,22 @@ export default function Dashboard() {
         setSoftwareData(newData)
         console.log('Data saved successfully to software.json!')
       } else {
-        throw new Error(result.message)
+        // Fallback to localStorage for static hosting
+        console.log('API save failed, using localStorage fallback')
+        localStorage.setItem('seo-rocket-software-data', JSON.stringify(newData))
+        setSoftwareData(newData)
+        console.log('Data saved to localStorage (static hosting mode)')
       }
     } catch (error) {
       console.error('Error saving data:', error)
-      console.error('Error saving data: ' + (error as Error).message)
+      // Also fallback to localStorage on error
+      try {
+        localStorage.setItem('seo-rocket-software-data', JSON.stringify(newData))
+        setSoftwareData(newData)
+        console.log('Data saved to localStorage (fallback due to error)')
+      } catch (localError) {
+        console.error('Failed to save to localStorage:', localError)
+      }
     }
   }
 
@@ -300,6 +326,11 @@ export default function Dashboard() {
               <span className="bg-green-600 text-green-100 px-2 py-1 rounded-full text-xs font-medium">
                 {softwareData?.metadata.totalSoftware} Software Items
               </span>
+              {localStorage.getItem('seo-rocket-software-data') && (
+                <span className="bg-orange-600 text-orange-100 px-2 py-1 rounded-full text-xs font-medium">
+                  Static Hosting Mode
+                </span>
+              )}
             </div>
             <div className="flex items-center space-x-4">
               <button

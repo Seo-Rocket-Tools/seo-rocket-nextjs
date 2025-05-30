@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile } from 'fs/promises'
-import { join } from 'path'
 import { SoftwareData } from '../../../data/software-loader'
 
 export async function POST(request: NextRequest) {
   try {
     const data: SoftwareData = await request.json()
     
-    // Path to the software.json file
-    const filePath = join(process.cwd(), 'data', 'software.json')
+    // On static hosting platforms like Netlify, we can't write to files
+    // Return success but log that this is a read-only environment
+    console.log('Static hosting detected - data cannot be persisted to file system')
+    console.log('Updated data would be:', JSON.stringify(data, null, 2))
     
-    // Write the updated data to the JSON file
-    await writeFile(filePath, JSON.stringify(data, null, 2))
-    
-    return NextResponse.json({ success: true, message: 'Data saved successfully' })
+    return NextResponse.json({ 
+      success: false, 
+      message: 'Static hosting detected - use localStorage fallback' 
+    })
   } catch (error) {
-    console.error('Error saving software data:', error)
+    console.error('Error in API route:', error)
     return NextResponse.json(
-      { success: false, message: 'Failed to save data' },
+      { success: false, message: 'Failed to process data' },
       { status: 500 }
     )
   }
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    // This could be used to fetch the latest data if needed
+    // Load the static data
     const { loadSoftwareData } = await import('../../../data/software-loader')
     const data = await loadSoftwareData()
     return NextResponse.json(data)
