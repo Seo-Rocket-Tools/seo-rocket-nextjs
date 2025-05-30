@@ -11,6 +11,7 @@ export interface SoftwareItem {
   featured: boolean;
   url: string;
   pricing: 'free' | 'premium' | 'freemium';
+  priority: number;
 }
 
 export interface SoftwareData {
@@ -25,7 +26,7 @@ export interface SoftwareData {
 
 // Convert Supabase Product to SoftwareItem
 function convertProductToSoftwareItem(product: Product): SoftwareItem {
-  console.log('Converting product:', product.software_name, 'Tags field:', product.tags)
+  console.log('Converting product:', product.software_name, 'Tags field:', product.tags, 'Priority:', product.priority)
   
   let tagsArray: string[] = []
   
@@ -51,7 +52,8 @@ function convertProductToSoftwareItem(product: Product): SoftwareItem {
     releaseDate: new Date(product.created_at).toISOString().split('T')[0],
     featured: product.featured,
     url: product.url,
-    pricing: product.free ? 'free' : 'premium' // Map free boolean to pricing
+    pricing: product.free ? 'free' : 'premium', // Map free boolean to pricing
+    priority: product.priority || 100 // Include priority with fallback
   }
 }
 
@@ -68,8 +70,10 @@ export async function loadSoftwareData(): Promise<SoftwareData> {
   const tags = await getAvailableTagsFromProducts()
   console.log('Loaded tags:', tags)
   
-  const softwareItems = products.map(convertProductToSoftwareItem)
-  console.log('Converted software items:', softwareItems)
+  const softwareItems = products
+    .map(convertProductToSoftwareItem)
+    .sort((a, b) => (a.priority || 100) - (b.priority || 100))
+  console.log('Converted and sorted software items:', softwareItems)
   
   return {
     metadata: {
@@ -83,22 +87,36 @@ export async function loadSoftwareData(): Promise<SoftwareData> {
 }
 
 export function getActiveSoftware(data: SoftwareData): SoftwareItem[] {
-  return data.software.filter(item => item.status === 'active');
+  return data.software
+    .filter(item => item.status === 'active')
+    .sort((a, b) => (a.priority || 100) - (b.priority || 100));
 }
 
 export function getFeaturedSoftware(data: SoftwareData): SoftwareItem[] {
-  return data.software.filter(item => item.featured && item.status === 'active');
+  return data.software
+    .filter(item => item.featured && item.status === 'active')
+    .sort((a, b) => (a.priority || 100) - (b.priority || 100));
 }
 
 export function getSoftwareByTag(data: SoftwareData, tag: string): SoftwareItem[] {
-  if (tag === 'All') return getActiveSoftware(data);
-  if (tag === 'Featured') return getFeaturedSoftware(data);
-  if (tag === 'Free') return data.software.filter(item => 
-    item.pricing === 'free' && item.status === 'active'
-  );
-  return data.software.filter(item => 
-    item.tags.includes(tag) && item.status === 'active'
-  );
+  let filtered: SoftwareItem[] = [];
+  
+  if (tag === 'All') {
+    filtered = data.software.filter(item => item.status === 'active');
+  } else if (tag === 'Featured') {
+    filtered = data.software.filter(item => item.featured && item.status === 'active');
+  } else if (tag === 'Free') {
+    filtered = data.software.filter(item => 
+      item.pricing === 'free' && item.status === 'active'
+    );
+  } else {
+    filtered = data.software.filter(item => 
+      item.tags.includes(tag) && item.status === 'active'
+    );
+  }
+  
+  // Always sort by priority
+  return filtered.sort((a, b) => (a.priority || 100) - (b.priority || 100));
 }
 
 export function getAvailableTags(data: SoftwareData): string[] {

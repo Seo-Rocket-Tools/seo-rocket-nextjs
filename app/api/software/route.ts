@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
           published: item.status === 'active',
           featured: item.featured,
           free: item.pricing === 'free',
-          image_url: '' // Default empty, can be updated later
+          image_url: '', // Default empty, can be updated later
+          priority: item.priority || 100
         }
 
         // Use upsert to insert or update

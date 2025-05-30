@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { loadSoftwareData, SoftwareData, SoftwareItem } from '../../data/software-loader'
+import { useRealtime } from '../../lib/useRealtime'
 
 // Hard-coded admin password
 const ADMIN_PASSWORD = "seorocket2025"
@@ -25,6 +26,48 @@ export default function Dashboard() {
   const [showTagManager, setShowTagManager] = useState(false)
   const [newTagInput, setNewTagInput] = useState('')
   const [tagToDelete, setTagToDelete] = useState<string | null>(null)
+  const [realtimeStatus, setRealtimeStatus] = useState<{
+    isConnected: boolean
+    error: string | null
+  }>({ isConnected: false, error: null })
+
+  // Realtime data refresh function
+  const refreshData = useCallback(async () => {
+    if (!isAuthenticated) return
+    
+    try {
+      console.log('Admin: Refreshing data due to realtime update...')
+      const data = await loadSoftwareData()
+      setSoftwareData(data)
+      console.log('Admin: Data refreshed successfully')
+    } catch (error) {
+      console.error('Admin: Failed to refresh software data:', error)
+    }
+  }, [isAuthenticated])
+
+  // Handle realtime product changes
+  const handleProductChange = useCallback((payload: any) => {
+    console.log('Admin: Product change detected:', payload.eventType, payload)
+    refreshData()
+  }, [refreshData])
+
+  // Handle realtime tag changes
+  const handleTagChange = useCallback((payload: any) => {
+    console.log('Admin: Tag change detected:', payload.eventType, payload)
+    refreshData()
+  }, [refreshData])
+
+  // Set up realtime subscriptions (only when authenticated)
+  const { isConnected, error, reconnect } = useRealtime({
+    onProductChange: handleProductChange,
+    onTagChange: handleTagChange,
+    enabled: isAuthenticated
+  })
+
+  // Update realtime status
+  useEffect(() => {
+    setRealtimeStatus({ isConnected, error })
+  }, [isConnected, error])
 
   // Check for cached authentication on component mount
   useEffect(() => {
@@ -101,7 +144,7 @@ export default function Dashboard() {
 
       if (result.success) {
         setSoftwareData(newData)
-        console.log('Data saved successfully to software.json!')
+        console.log('Data saved successfully to Supabase database!')
       } else {
         // Fallback to localStorage for static hosting
         console.log('API save failed, using localStorage fallback')
@@ -340,6 +383,28 @@ export default function Dashboard() {
                   Static Hosting Mode
                 </span>
               )}
+              {/* Realtime Status Indicator */}
+              <div className="flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300"
+                   style={{
+                     backgroundColor: realtimeStatus.isConnected ? 'rgba(34, 197, 94, 0.2)' : realtimeStatus.error ? 'rgba(239, 68, 68, 0.2)' : 'rgba(156, 163, 175, 0.2)',
+                     color: realtimeStatus.isConnected ? '#22c55e' : realtimeStatus.error ? '#ef4444' : '#9ca3af',
+                   }}>
+                <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                  realtimeStatus.isConnected ? 'bg-green-500' : realtimeStatus.error ? 'bg-red-500' : 'bg-gray-400'
+                }`} />
+                <span>
+                  {realtimeStatus.isConnected ? 'Live' : realtimeStatus.error ? 'Disconnected' : 'Connecting...'}
+                </span>
+                {realtimeStatus.error && (
+                  <button
+                    onClick={reconnect}
+                    className="ml-1 text-blue-400 hover:text-blue-300 underline"
+                    title="Reconnect to realtime updates"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <button
@@ -355,6 +420,7 @@ export default function Dashboard() {
                     featured: false,
                     url: '#',
                     pricing: 'premium',
+                    priority: 100,
                     isNew: true
                   })
                   setIsModalOpen(true)
@@ -437,6 +503,7 @@ export default function Dashboard() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Software</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Priority</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Pricing</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Tags</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
@@ -470,6 +537,11 @@ export default function Dashboard() {
                           : 'bg-red-100 text-red-800'
                       }`}>
                         {software.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {software.priority || 100}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -829,7 +901,7 @@ function EditSoftwareModal({
               <p className="text-xs text-gray-400 mt-1">Select tags from available options. Create new tags in Tag Manager.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
                 <select
@@ -854,6 +926,20 @@ function EditSoftwareModal({
                   <option value="premium">Premium</option>
                   <option value="freemium">Freemium</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Priority</label>
+                <input
+                  type="number"
+                  value={formData.priority || 100}
+                  onChange={(e) => setFormData({...formData, priority: parseInt(e.target.value) || 100})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                  max="999"
+                  placeholder="100"
+                  title="Lower numbers = higher priority (displayed first)"
+                />
+                <p className="text-xs text-gray-400 mt-1">Lower = Higher Priority</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Release Date</label>

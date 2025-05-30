@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { loadSoftwareData, getActiveSoftware, getSoftwareByTag, getAvailableTags, SoftwareData, SoftwareItem, getFeaturedSoftware } from '../data/software-loader'
+import { useRealtime } from '../lib/useRealtime'
+import { Product, Tag } from '../lib/supabase'
 
 export default function Home() {
-  const [hoveredCard, setHoveredCard] = useState<number | null>(null)
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [isGridHovered, setIsGridHovered] = useState(false)
   const [gridMousePosition, setGridMousePosition] = useState({ x: 0, y: 0 })
@@ -14,6 +16,54 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const [realtimeStatus, setRealtimeStatus] = useState<{
+    isConnected: boolean
+    error: string | null
+  }>({ isConnected: false, error: null })
+
+  // Realtime data refresh function
+  const refreshData = useCallback(async () => {
+    try {
+      console.log('Refreshing data due to realtime update...')
+      const data = await loadSoftwareData()
+      setSoftwareData(data)
+      
+      // Update filtered software based on current filter
+      if (activeFilter === 'Featured') {
+        setFilteredSoftware(getFeaturedSoftware(data))
+      } else {
+        setFilteredSoftware(getSoftwareByTag(data, activeFilter))
+      }
+      
+      console.log('Data refreshed successfully')
+    } catch (error) {
+      console.error('Failed to refresh software data:', error)
+    }
+  }, [activeFilter])
+
+  // Handle realtime product changes
+  const handleProductChange = useCallback((payload: any) => {
+    console.log('Product change detected:', payload.eventType, payload)
+    refreshData()
+  }, [refreshData])
+
+  // Handle realtime tag changes
+  const handleTagChange = useCallback((payload: any) => {
+    console.log('Tag change detected:', payload.eventType, payload)
+    refreshData()
+  }, [refreshData])
+
+  // Set up realtime subscriptions
+  const { isConnected, error, reconnect } = useRealtime({
+    onProductChange: handleProductChange,
+    onTagChange: handleTagChange,
+    enabled: true
+  })
+
+  // Update realtime status
+  useEffect(() => {
+    setRealtimeStatus({ isConnected, error })
+  }, [isConnected, error])
 
   // Load software data on component mount
   useEffect(() => {
@@ -164,12 +214,12 @@ export default function Home() {
     }
   }, [softwareData])
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, index: number) => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, toolId: string) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left - rect.width / 2
     const y = e.clientY - rect.top - rect.height / 2
     setMousePosition({ x, y })
-    setHoveredCard(index)
+    setHoveredCard(toolId)
   }
 
   const handleMouseLeave = () => {
@@ -190,24 +240,24 @@ export default function Home() {
     setGridMousePosition({ x: 0, y: 0 })
   }
 
-  const getCardTransform = (index: number) => {
-    if (hoveredCard !== index) return 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)'
+  const getCardTransform = (toolId: string) => {
+    if (hoveredCard !== toolId) return 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)'
     
-    const tiltX = (mousePosition.y / 25) * -1
-    const tiltY = mousePosition.x / 25
+    const rotateX = -mousePosition.y * 0.05
+    const rotateY = mousePosition.x * 0.05
     
-    return `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateZ(10px)`
+    return `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(8px)`
   }
 
-  const getCardShadow = (index: number) => {
-    if (hoveredCard !== index) {
-      return '0 8px 30px rgba(0, 0, 0, 0.3), 0 4px 20px rgba(255, 255, 255, 0.1)'
+  const getCardShadow = (toolId: string) => {
+    if (hoveredCard !== toolId) {
+      return '0 4px 8px rgba(0, 0, 0, 0.2)'
     }
     
-    const shadowX = mousePosition.x / 8
-    const shadowY = mousePosition.y / 8
+    const shadowOffsetX = mousePosition.x * 0.02
+    const shadowOffsetY = mousePosition.y * 0.02
     
-    return `${shadowX}px ${shadowY + 25}px 50px rgba(0, 0, 0, 0.5), 0 10px 40px rgba(255, 255, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
+    return `${shadowOffsetX}px ${8 + shadowOffsetY}px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1)`
   }
 
   // Show loading state
@@ -393,13 +443,13 @@ export default function Home() {
                 key={tool.id}
                 className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)] xl:w-[calc(25%-0.9375rem)] min-w-[280px] max-w-[320px] rounded-lg p-4 sm:p-6 transition-all duration-500 ease-out cursor-pointer relative flex flex-col"
                 style={{
-                  backgroundColor: hoveredCard === index ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
-                  border: `1px solid ${hoveredCard === index ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
-                  transform: getCardTransform(index),
-                  boxShadow: getCardShadow(index),
+                  backgroundColor: hoveredCard === tool.id ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                  border: `1px solid ${hoveredCard === tool.id ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
+                  transform: getCardTransform(tool.id),
+                  boxShadow: getCardShadow(tool.id),
                   transformStyle: 'preserve-3d',
                 }}
-                onMouseMove={(e) => handleMouseMove(e, index)}
+                onMouseMove={(e) => handleMouseMove(e, tool.id)}
                 onMouseLeave={handleMouseLeave}
                 onClick={() => {
                   if (tool.url && tool.url !== '#') {
@@ -408,7 +458,7 @@ export default function Home() {
                 }}
               >
                 {/* New Tab Icon - Only appears on hover */}
-                {hoveredCard === index && (
+                {hoveredCard === tool.id && (
                   <img 
                     src="/newtab.svg" 
                     alt="Open in new tab" 
@@ -424,7 +474,7 @@ export default function Home() {
                 <div 
                   className="text-3xl sm:text-4xl mb-3 sm:mb-4 transition-transform duration-500"
                   style={{
-                    transform: hoveredCard === index ? 'translateZ(12px)' : 'translateZ(0px)',
+                    transform: hoveredCard === tool.id ? 'translateZ(12px)' : 'translateZ(0px)',
                   }}
                 >
                   {tool.icon}
@@ -434,7 +484,7 @@ export default function Home() {
                 <h3 
                   className="text-lg sm:text-xl font-semibold text-white mb-2 sm:mb-3 transition-transform duration-500"
                   style={{
-                    transform: hoveredCard === index ? 'translateZ(8px)' : 'translateZ(0px)',
+                    transform: hoveredCard === tool.id ? 'translateZ(8px)' : 'translateZ(0px)',
                   }}
                 >
                   {tool.name}
@@ -444,7 +494,7 @@ export default function Home() {
                 <p 
                   className="text-gray-400 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 flex-grow transition-transform duration-500"
                   style={{
-                    transform: hoveredCard === index ? 'translateZ(6px)' : 'translateZ(0px)',
+                    transform: hoveredCard === tool.id ? 'translateZ(6px)' : 'translateZ(0px)',
                   }}
                 >
                   {tool.description}
@@ -454,7 +504,7 @@ export default function Home() {
                 <div 
                   className="flex flex-wrap gap-2 mt-auto transition-transform duration-500"
                   style={{
-                    transform: hoveredCard === index ? 'translateZ(10px)' : 'translateZ(0px)',
+                    transform: hoveredCard === tool.id ? 'translateZ(10px)' : 'translateZ(0px)',
                   }}
                 >
                   {/* Free tag for free products */}

@@ -27,6 +27,7 @@ export interface Product {
   free: boolean
   image_url: string
   created_at: string
+  priority: number
 }
 
 export interface Tag {
@@ -46,7 +47,7 @@ export async function getActiveProducts(): Promise<Product[]> {
     .from('products')
     .select('*')
     .eq('published', true)
-    .order('created_at', { ascending: false })
+    .order('priority', { ascending: true })
 
   if (error) {
     console.error('Error fetching products:', error)
@@ -67,7 +68,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
     .select('*')
     .eq('published', true)
     .eq('featured', true)
-    .order('created_at', { ascending: false })
+    .order('priority', { ascending: true })
 
   if (error) {
     console.error('Error fetching featured products:', error)
@@ -97,7 +98,7 @@ export async function getProductsByTag(tagName: string): Promise<Product[]> {
       .select('*')
       .eq('published', true)
       .eq('free', true)
-      .order('created_at', { ascending: false })
+      .order('priority', { ascending: true })
 
     if (error) {
       console.error('Error fetching free products:', error)
@@ -113,7 +114,7 @@ export async function getProductsByTag(tagName: string): Promise<Product[]> {
     .select('*')
     .eq('published', true)
     .contains('tags', [tagName])
-    .order('created_at', { ascending: false })
+    .order('priority', { ascending: true })
 
   if (error) {
     console.error('Error fetching products by tag:', error)

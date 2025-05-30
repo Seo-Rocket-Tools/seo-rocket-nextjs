@@ -105,20 +105,19 @@ Open [http://localhost:3000](http://localhost:3000) to view the website.
 ## Project Structure
 
 ```
+seo-rocket-nextjs/
 ├── app/
-│   ├── page.tsx                 # Main homepage component
-│   ├── layout.tsx              # Root layout
-│   ├── admin/                  # Admin interface (if exists)
-│   └── api/
-│       └── software/           # API routes for software data
+│   ├── admin/
+│   │   └── page.tsx          # Admin dashboard
+│   ├── page.tsx              # Main homepage
+│   └── layout.tsx            # Root layout
 ├── data/
-│   ├── software-loader.ts      # Supabase data loader
-│   └── README.md              # Data documentation
+│   └── software-loader.ts    # Supabase data loader
 ├── lib/
-│   └── supabase.ts            # Supabase client and database functions
-├── scripts/
-│   └── migrate-to-supabase.ts # Migration script
-└── SUPABASE_CONFIG.md         # Detailed Supabase configuration
+│   ├── useRealtime.ts        # Realtime functionality hooks
+│   └── supabase.ts           # Supabase client and database functions
+└── scripts/
+    └── add-priority-column.sql # Database schema updates
 ```
 
 ## Data Flow
@@ -209,11 +208,23 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
 ## Error Handling
 
+### Common Issues
+
 If Supabase is not configured properly, the application will show clear error messages. Make sure to:
 
-1. Set up your `.env.local` file with correct Supabase credentials
-2. Create the required database tables
-3. Add some sample data to your tables
+1. Follow the Supabase setup instructions above
+2. Verify your environment variables are correctly set
+3. Check that your Supabase project is active
+4. Verify your Supabase database tables are created correctly
+5. Ensure you have data in your Supabase tables
+
+### If you get build errors:
+
+1. Run `npm install` to ensure all dependencies are installed
+2. Make sure you have Node.js 18+ installed
+3. Check that your `.env.local` file is correctly configured
+4. Verify your Supabase database tables are created correctly
+5. Ensure you have data in your Supabase tables
 
 ## Contributing
 
