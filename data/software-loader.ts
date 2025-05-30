@@ -1,4 +1,4 @@
-import { getActiveProducts, getFeaturedProducts, getProductsByTag, getAvailableTagsFromProducts, Product, supabase } from '../lib/supabase'
+import { getActiveProducts, getFeaturedProducts, getProductsByTag, getAvailableTagsFromProducts, getAllProducts, Product, supabase } from '../lib/supabase'
 
 export interface SoftwareItem {
   id: string;
@@ -26,7 +26,7 @@ export interface SoftwareData {
 
 // Convert Supabase Product to SoftwareItem
 function convertProductToSoftwareItem(product: Product): SoftwareItem {
-  console.log('Converting product:', product.software_name, 'Tags field:', product.tags, 'Priority:', product.priority)
+  console.log('Converting product:', product.software_name, 'Tags field:', product.tags, 'Priority:', product.priority, 'Published:', product.published)
   
   let tagsArray: string[] = []
   
@@ -48,7 +48,7 @@ function convertProductToSoftwareItem(product: Product): SoftwareItem {
     icon: product.emoji,
     description: product.description,
     tags: tagsArray,
-    status: 'active', // All published products are active
+    status: product.published ? 'active' : 'coming-soon', // Use different status for unpublished products
     releaseDate: new Date(product.created_at).toISOString().split('T')[0],
     featured: product.featured,
     url: product.url,
@@ -57,17 +57,17 @@ function convertProductToSoftwareItem(product: Product): SoftwareItem {
   }
 }
 
-export async function loadSoftwareData(): Promise<SoftwareData> {
+export async function loadSoftwareData(isAdmin: boolean = false): Promise<SoftwareData> {
   // Check if Supabase is configured
   if (!supabase) {
     throw new Error('Supabase not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
   }
 
-  console.log('Loading products from Supabase...')
-  const products = await getActiveProducts()
+  console.log('Loading products from Supabase... Admin mode:', isAdmin)
+  const products = isAdmin ? await getAllProducts() : await getActiveProducts()
   console.log('Loaded products:', products)
   
-  const tags = await getAvailableTagsFromProducts()
+  const tags = await getAvailableTagsFromProducts(isAdmin)
   console.log('Loaded tags:', tags)
   
   const softwareItems = products
@@ -92,44 +92,46 @@ export function getActiveSoftware(data: SoftwareData): SoftwareItem[] {
     .sort((a, b) => (a.priority || 100) - (b.priority || 100));
 }
 
-export function getFeaturedSoftware(data: SoftwareData): SoftwareItem[] {
-  return data.software
-    .filter(item => item.featured && item.status === 'active')
-    .sort((a, b) => (a.priority || 100) - (b.priority || 100));
+export function getFeaturedSoftware(data: SoftwareData, isAdmin: boolean = false): SoftwareItem[] {
+  return isAdmin
+    ? data.software.filter(item => item.featured).sort((a, b) => (a.priority || 100) - (b.priority || 100))
+    : data.software.filter(item => item.featured && item.status === 'active').sort((a, b) => (a.priority || 100) - (b.priority || 100));
 }
 
-export function getSoftwareByTag(data: SoftwareData, tag: string): SoftwareItem[] {
+export function getSoftwareByTag(data: SoftwareData, tag: string, isAdmin: boolean = false): SoftwareItem[] {
   let filtered: SoftwareItem[] = [];
   
   if (tag === 'All') {
-    filtered = data.software.filter(item => item.status === 'active');
+    filtered = isAdmin ? data.software : data.software.filter(item => item.status === 'active');
   } else if (tag === 'Featured') {
-    filtered = data.software.filter(item => item.featured && item.status === 'active');
+    filtered = isAdmin 
+      ? data.software.filter(item => item.featured)
+      : data.software.filter(item => item.featured && item.status === 'active');
   } else if (tag === 'Free') {
-    filtered = data.software.filter(item => 
-      item.pricing === 'free' && item.status === 'active'
-    );
+    filtered = isAdmin
+      ? data.software.filter(item => item.pricing === 'free')
+      : data.software.filter(item => item.pricing === 'free' && item.status === 'active');
   } else {
-    filtered = data.software.filter(item => 
-      item.tags.includes(tag) && item.status === 'active'
-    );
+    filtered = isAdmin
+      ? data.software.filter(item => item.tags.includes(tag))
+      : data.software.filter(item => item.tags.includes(tag) && item.status === 'active');
   }
   
   // Always sort by priority
   return filtered.sort((a, b) => (a.priority || 100) - (b.priority || 100));
 }
 
-export function getAvailableTags(data: SoftwareData): string[] {
+export function getAvailableTags(data: SoftwareData, isAdmin: boolean = false): string[] {
   // Start with the predefined tags array
   const predefinedTags = [...data.tags];
   
-  // Collect all unique tags from software items (for active software only)
+  // Collect all unique tags from software items
   const dynamicTags = new Set<string>();
-  data.software
-    .filter(item => item.status === 'active')
-    .forEach(item => {
-      item.tags.forEach(tag => dynamicTags.add(tag));
-    });
+  const itemsToProcess = isAdmin ? data.software : data.software.filter(item => item.status === 'active');
+  
+  itemsToProcess.forEach(item => {
+    item.tags.forEach(tag => dynamicTags.add(tag));
+  });
   
   // Merge predefined and dynamic tags, keeping the original order for system tags
   const systemTags = ['Featured', 'Free', 'All']; // These should always come first
@@ -143,12 +145,12 @@ export function getAvailableTags(data: SoftwareData): string[] {
 }
 
 // Direct Supabase query functions for better performance when needed
-export async function getSoftwareByTagDirect(tag: string): Promise<SoftwareItem[]> {
+export async function getSoftwareByTagDirect(tag: string, includeUnpublished: boolean = false): Promise<SoftwareItem[]> {
   if (!supabase) {
     throw new Error('Supabase not configured')
   }
   
-  const products = await getProductsByTag(tag)
+  const products = await getProductsByTag(tag, includeUnpublished)
   return products.map(convertProductToSoftwareItem)
 }
 

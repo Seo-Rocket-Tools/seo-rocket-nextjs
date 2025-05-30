@@ -57,6 +57,25 @@ export async function getActiveProducts(): Promise<Product[]> {
   return data || []
 }
 
+export async function getAllProducts(): Promise<Product[]> {
+  if (!supabase) {
+    console.warn('Supabase not configured, returning empty array')
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('priority', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching all products:', error)
+    return []
+  }
+
+  return data || []
+}
+
 export async function getFeaturedProducts(): Promise<Product[]> {
   if (!supabase) {
     console.warn('Supabase not configured, returning empty array')
@@ -78,27 +97,47 @@ export async function getFeaturedProducts(): Promise<Product[]> {
   return data || []
 }
 
-export async function getProductsByTag(tagName: string): Promise<Product[]> {
+export async function getProductsByTag(tagName: string, includeUnpublished: boolean = false): Promise<Product[]> {
   if (!supabase) {
     console.warn('Supabase not configured, returning empty array')
     return []
   }
 
   if (tagName === 'All') {
-    return getActiveProducts()
+    return includeUnpublished ? getAllProducts() : getActiveProducts()
   }
   
   if (tagName === 'Featured') {
-    return getFeaturedProducts()
+    if (includeUnpublished) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('featured', true)
+        .order('priority', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching all featured products:', error)
+        return []
+      }
+
+      return data || []
+    } else {
+      return getFeaturedProducts()
+    }
   }
 
   if (tagName === 'Free') {
-    const { data, error } = await supabase
+    const query = supabase
       .from('products')
       .select('*')
-      .eq('published', true)
       .eq('free', true)
       .order('priority', { ascending: true })
+
+    if (!includeUnpublished) {
+      query.eq('published', true)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Error fetching free products:', error)
@@ -109,12 +148,17 @@ export async function getProductsByTag(tagName: string): Promise<Product[]> {
   }
 
   // Use PostgreSQL array contains operator for array-based tags
-  const { data, error } = await supabase
+  const query = supabase
     .from('products')
     .select('*')
-    .eq('published', true)
     .contains('tags', [tagName])
     .order('priority', { ascending: true })
+
+  if (!includeUnpublished) {
+    query.eq('published', true)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error('Error fetching products by tag:', error)
@@ -143,13 +187,13 @@ export async function getAllTags(): Promise<Tag[]> {
   return data || []
 }
 
-export async function getAvailableTagsFromProducts(): Promise<string[]> {
+export async function getAvailableTagsFromProducts(includeUnpublished: boolean = false): Promise<string[]> {
   if (!supabase) {
     console.warn('Supabase not configured, returning default tags')
     return ['Featured', 'Free', 'All']
   }
 
-  const products = await getActiveProducts()
+  const products = includeUnpublished ? await getAllProducts() : await getActiveProducts()
   const tagSet = new Set<string>()
   
   // Extract tags from products - handle both array and string formats
