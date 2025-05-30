@@ -31,6 +31,30 @@ export default function Home() {
     loadData()
   }, [])
 
+  // Reload data when page gains focus (e.g., coming back from admin panel)
+  useEffect(() => {
+    const handleFocus = async () => {
+      try {
+        console.log('Page focused, reloading software data...')
+        const data = await loadSoftwareData()
+        console.log('Loaded data with tags:', data.tags)
+        console.log('Available tags from getAvailableTags:', getAvailableTags(data))
+        setSoftwareData(data)
+        // Maintain current filter when refreshing data
+        if (activeFilter === 'Featured') {
+          setFilteredSoftware(getFeaturedSoftware(data))
+        } else {
+          setFilteredSoftware(getSoftwareByTag(data, activeFilter))
+        }
+      } catch (error) {
+        console.error('Failed to reload software data:', error)
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [activeFilter])
+
   // Handle filter changes
   const handleFilterChange = (filter: string) => {
     if (!softwareData) return
@@ -391,6 +415,11 @@ export default function Home() {
                       }}
                       onMouseMove={(e) => handleMouseMove(e, globalIndex)}
                       onMouseLeave={handleMouseLeave}
+                      onClick={() => {
+                        if (tool.url && tool.url !== '#') {
+                          window.open(tool.url, '_blank', 'noopener,noreferrer')
+                        }
+                      }}
                     >
                       {/* New Tab Icon - Only appears on hover */}
                       {hoveredCard === globalIndex && (

@@ -22,7 +22,19 @@ export interface SoftwareData {
 }
 
 export async function loadSoftwareData(): Promise<SoftwareData> {
-  // In a real app, this could load from an API
+  // Always load fresh data from the JSON file
+  try {
+    // Add timestamp to bypass any caching
+    const timestamp = Date.now();
+    const response = await fetch(`/api/software?t=${timestamp}`, { cache: 'no-store' });
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (error) {
+    console.log('API not available, falling back to static import');
+  }
+  
+  // Fallback to static import if API is not available
   const softwareData = await import('./software.json');
   return softwareData.default as SoftwareData;
 }
@@ -44,5 +56,24 @@ export function getSoftwareByTag(data: SoftwareData, tag: string): SoftwareItem[
 }
 
 export function getAvailableTags(data: SoftwareData): string[] {
-  return data.tags;
+  // Start with the predefined tags array
+  const predefinedTags = [...data.tags];
+  
+  // Collect all unique tags from software items (for active software only)
+  const dynamicTags = new Set<string>();
+  data.software
+    .filter(item => item.status === 'active')
+    .forEach(item => {
+      item.tags.forEach(tag => dynamicTags.add(tag));
+    });
+  
+  // Merge predefined and dynamic tags, keeping the original order for system tags
+  const systemTags = ['Featured', 'Free', 'All']; // These should always come first
+  const otherPredefinedTags = predefinedTags.filter(tag => !systemTags.includes(tag));
+  const newDynamicTags = Array.from(dynamicTags).filter(tag => 
+    !predefinedTags.includes(tag) && !systemTags.includes(tag)
+  );
+  
+  // Return in order: System tags, predefined tags, new dynamic tags
+  return [...systemTags, ...otherPredefinedTags, ...newDynamicTags];
 } 

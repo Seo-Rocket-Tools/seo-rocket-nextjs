@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "lastUpdated": "2025-01-27",
+    "lastUpdated": "2025-05-30",
     "version": "1.0.0",
     "totalSoftware": 14
   },
@@ -10,7 +10,11 @@
       "name": "SEO Automator",
       "icon": "🚀",
       "description": "Automate keyword research, rank tracking, and competitor analysis with our powerful SEO toolkit.",
-      "tags": ["SEO", "Productivity"],
+      "tags": [
+        "Productivity",
+        "FB Ads",
+        "SEO"
+      ],
       "status": "active",
       "releaseDate": "2024-01-15",
       "featured": true,
@@ -22,7 +26,10 @@
       "name": "Analytics Dashboard",
       "icon": "📊",
       "description": "Centralized reporting dashboard that pulls data from all your marketing channels in real-time.",
-      "tags": ["Productivity", "Free"],
+      "tags": [
+        "Productivity",
+        "Free"
+      ],
       "status": "active",
       "releaseDate": "2024-02-01",
       "featured": true,
@@ -34,7 +41,10 @@
       "name": "Lead Generator",
       "icon": "🎯",
       "description": "Chrome extension that finds contact information and builds prospect lists while you browse.",
-      "tags": ["Chrome Extension", "Productivity"],
+      "tags": [
+        "Chrome Extension",
+        "Productivity"
+      ],
       "status": "active",
       "releaseDate": "2024-02-15",
       "featured": false,
@@ -46,7 +56,10 @@
       "name": "Social Scheduler",
       "icon": "📱",
       "description": "WordPress plugin for automated social media posting across multiple platforms and clients.",
-      "tags": ["WordPress Plugin", "Productivity"],
+      "tags": [
+        "WordPress Plugin",
+        "Productivity"
+      ],
       "status": "active",
       "releaseDate": "2024-03-01",
       "featured": true,
@@ -58,7 +71,10 @@
       "name": "Client Communicator",
       "icon": "💬",
       "description": "Streamline client communication with automated reports, proposals, and project updates.",
-      "tags": ["Productivity", "Free"],
+      "tags": [
+        "Productivity",
+        "Free"
+      ],
       "status": "active",
       "releaseDate": "2024-03-15",
       "featured": false,
@@ -70,7 +86,10 @@
       "name": "Workflow Engine",
       "icon": "⚡",
       "description": "Build custom automation workflows that connect your favorite marketing tools and apps.",
-      "tags": ["Productivity", "SEO"],
+      "tags": [
+        "Productivity",
+        "SEO"
+      ],
       "status": "active",
       "releaseDate": "2024-04-01",
       "featured": true,
@@ -82,7 +101,10 @@
       "name": "API Connector",
       "icon": "🔗",
       "description": "Seamlessly integrate multiple platforms and automate data flow between your favorite tools.",
-      "tags": ["Productivity", "Chrome Extension"],
+      "tags": [
+        "Productivity",
+        "Chrome Extension"
+      ],
       "status": "active",
       "releaseDate": "2024-04-15",
       "featured": false,
@@ -94,7 +116,11 @@
       "name": "Content Generator AI",
       "icon": "🤖",
       "description": "AI-powered content creation tool that generates blog posts, social media content, and ad copy.",
-      "tags": ["AI", "Productivity", "Content"],
+      "tags": [
+        "AI",
+        "Productivity",
+        "Content"
+      ],
       "status": "active",
       "releaseDate": "2024-05-01",
       "featured": true,
@@ -106,7 +132,10 @@
       "name": "Rank Tracker Pro",
       "icon": "📈",
       "description": "Advanced SEO rank tracking with competitor analysis, keyword grouping, and white-label reports.",
-      "tags": ["SEO", "Productivity"],
+      "tags": [
+        "SEO",
+        "Productivity"
+      ],
       "status": "active",
       "releaseDate": "2024-05-15",
       "featured": true,
@@ -118,7 +147,10 @@
       "name": "Email Finder Pro",
       "icon": "📧",
       "description": "Discover professional email addresses and contact information for outreach campaigns.",
-      "tags": ["Chrome Extension", "Lead Generation"],
+      "tags": [
+        "Chrome Extension",
+        "Lead Generation"
+      ],
       "status": "active",
       "releaseDate": "2024-06-01",
       "featured": false,
@@ -130,7 +162,10 @@
       "name": "Landing Page Builder",
       "icon": "🎨",
       "description": "Drag-and-drop landing page creator with conversion-optimized templates and A/B testing.",
-      "tags": ["Design", "Productivity"],
+      "tags": [
+        "Design",
+        "Productivity"
+      ],
       "status": "active",
       "releaseDate": "2024-06-15",
       "featured": true,
@@ -142,7 +177,10 @@
       "name": "Social Media Manager",
       "icon": "🌐",
       "description": "Manage multiple social media accounts, schedule posts, and track engagement from one dashboard.",
-      "tags": ["Social Media", "Productivity"],
+      "tags": [
+        "Social Media",
+        "Productivity"
+      ],
       "status": "active",
       "releaseDate": "2024-07-01",
       "featured": false,
@@ -154,7 +192,10 @@
       "name": "Conversion Optimizer",
       "icon": "🔄",
       "description": "A/B testing platform for websites with heatmaps, user recordings, and conversion tracking.",
-      "tags": ["Analytics", "Productivity"],
+      "tags": [
+        "Analytics",
+        "Productivity"
+      ],
       "status": "active",
       "releaseDate": "2024-07-15",
       "featured": false,
@@ -166,7 +207,10 @@
       "name": "Backlink Analyzer",
       "icon": "🔍",
       "description": "Comprehensive backlink analysis tool with competitor research and link building opportunities.",
-      "tags": ["SEO", "Analytics"],
+      "tags": [
+        "SEO",
+        "Analytics"
+      ],
       "status": "active",
       "releaseDate": "2024-08-01",
       "featured": true,
@@ -176,7 +220,7 @@
   ],
   "tags": [
     "Featured",
-    "Free", 
+    "Free",
     "All",
     "SEO",
     "Productivity",
@@ -189,4 +233,4 @@
     "Social Media",
     "Analytics"
   ]
-} 
+}
