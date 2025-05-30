@@ -22,12 +22,26 @@ export interface SoftwareData {
 }
 
 export async function loadSoftwareData(): Promise<SoftwareData> {
-  // Always load fresh data from the JSON file
+  // First check localStorage for admin changes (static hosting support)
+  if (typeof window !== 'undefined') {
+    try {
+      const savedData = localStorage.getItem('seo-rocket-software-data')
+      if (savedData) {
+        console.log('Loading data from localStorage (admin changes detected)')
+        return JSON.parse(savedData)
+      }
+    } catch (error) {
+      console.log('Error reading localStorage, falling back to API')
+    }
+  }
+
+  // Always load fresh data from the JSON file via API
   try {
     // Add timestamp to bypass any caching
     const timestamp = Date.now();
     const response = await fetch(`/api/software?t=${timestamp}`, { cache: 'no-store' });
     if (response.ok) {
+      console.log('Loading data from API')
       return await response.json();
     }
   } catch (error) {
@@ -35,6 +49,7 @@ export async function loadSoftwareData(): Promise<SoftwareData> {
   }
   
   // Fallback to static import if API is not available
+  console.log('Loading data from static import')
   const softwareData = await import('./software.json');
   return softwareData.default as SoftwareData;
 }

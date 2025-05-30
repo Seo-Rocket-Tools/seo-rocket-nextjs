@@ -249,6 +249,15 @@ export default function Dashboard() {
     return softwareData?.tags.filter(tag => !systemTags.includes(tag)) || []
   }
 
+  // Clear localStorage and reload original data
+  const resetToOriginalData = async () => {
+    if (confirm('This will reset all changes and reload the original data. Are you sure?')) {
+      localStorage.removeItem('seo-rocket-software-data')
+      localStorage.removeItem('seo-rocket-admin-auth') // Also clear auth to force re-login
+      window.location.reload()
+    }
+  }
+
   // Show authentication check loading state
   if (isCheckingAuth) {
     return (
@@ -376,6 +385,15 @@ export default function Dashboard() {
               >
                 Logout
               </button>
+              {localStorage.getItem('seo-rocket-software-data') && (
+                <button
+                  onClick={resetToOriginalData}
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded-md text-sm transition-colors duration-200"
+                  title="Reset to original data"
+                >
+                  Reset Data
+                </button>
+              )}
             </div>
           </div>
         </div>

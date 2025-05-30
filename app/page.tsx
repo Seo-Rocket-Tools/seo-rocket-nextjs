@@ -51,8 +51,28 @@ export default function Home() {
       }
     }
 
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'seo-rocket-software-data') {
+        console.log('localStorage data changed, reloading...')
+        handleFocus()
+      }
+    }
+
     window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also check for changes periodically (every 5 seconds)
+    const interval = setInterval(() => {
+      if (document.hasFocus()) {
+        handleFocus()
+      }
+    }, 5000)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('storage', handleStorageChange)
+      clearInterval(interval)
+    }
   }, [activeFilter])
 
   // Handle filter changes
