@@ -1,11 +1,18 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import { loadSoftwareData, getActiveSoftware, getSoftwareByTag, getAvailableTags, SoftwareData, SoftwareItem, getFeaturedSoftware } from '../data/software-loader'
+import { 
+  loadSoftwareData, 
+  SoftwareItem, 
+  SoftwareData,
+  getSoftwareByTag, 
+  getFeaturedSoftware
+} from '../data/software-loader'
 import { useRealtime } from '../lib/useRealtime'
-import { Product, Tag, supabase } from '../lib/supabase'
+import { Product, Tag, supabase, getAvailableTagsFromProducts } from '../lib/supabase'
 import { useAuth, signOut } from '../lib/useAuth'
 import Link from 'next/link'
+import TagOrdering from '../components/TagOrdering'
 
 export default function Home() {
   const { user, loading: authLoading, isAdmin } = useAuth()
@@ -43,13 +50,15 @@ export default function Home() {
   const [showTagManager, setShowTagManager] = useState(false)
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [showEditProduct, setShowEditProduct] = useState<string | null>(null)
+  const [showTagOrdering, setShowTagOrdering] = useState(false)
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
   const [newTagName, setNewTagName] = useState('')
-  const [cardMenuOpen, setCardMenuOpen] = useState<string | null>(null)
   const [showTagDropdown, setShowTagDropdown] = useState<string | null>(null)
   const [productPublishedStatus, setProductPublishedStatus] = useState<Record<string, boolean>>({})
   const [deletingTagId, setDeletingTagId] = useState<string | null>(null)
   const [productTagLoading, setProductTagLoading] = useState<string | null>(null)
+  const [editProductLoading, setEditProductLoading] = useState(false)
+  const [addProductLoading, setAddProductLoading] = useState(false)
 
   // Product form state
   const [productForm, setProductForm] = useState({
@@ -66,6 +75,9 @@ export default function Home() {
     slug: ''
   })
 
+  // State for available filter tags
+  const [availableFilterTags, setAvailableFilterTags] = useState<string[]>(['Featured', 'Free', 'All'])
+
   // Load tags for admin
   const loadTags = useCallback(async () => {
     if (!supabase || !stableIsAdmin) return
@@ -80,6 +92,27 @@ export default function Home() {
     }
   }, [stableIsAdmin])
 
+  // Helper function to get available tags
+  const getAvailableTagsForData = async (includeUnpublished: boolean = false): Promise<string[]> => {
+    try {
+      return await getAvailableTagsFromProducts(includeUnpublished)
+    } catch (error) {
+      console.error('Error getting available tags:', error)
+      return ['Featured', 'Free', 'All']
+    }
+  }
+
+  // Load available filter tags
+  const loadAvailableFilterTags = useCallback(async () => {
+    try {
+      const tags = await getAvailableTagsForData(stableIsAdmin)
+      setAvailableFilterTags(tags)
+    } catch (error) {
+      console.error('Error loading available filter tags:', error)
+      setAvailableFilterTags(['Featured', 'Free', 'All'])
+    }
+  }, [stableIsAdmin])
+
   // Realtime data refresh function
   const refreshData = useCallback(async () => {
     // Don't refresh data if auth is still loading
@@ -90,8 +123,11 @@ export default function Home() {
     
     try {
       console.log('Refreshing data due to realtime update with admin status:', stableIsAdmin)
-      const data = await loadSoftwareData(stableIsAdmin)
+      const data = await loadSoftwareData()
       setSoftwareData(data)
+      
+      // Also refresh available tags
+      await loadAvailableFilterTags()
       
       // Update filtered software based on current filter
       if (activeFilter === 'Featured') {
@@ -108,7 +144,7 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to refresh software data:', error)
     }
-  }, [activeFilter, stableIsAdmin, authLoading])
+  }, [activeFilter, stableIsAdmin, authLoading, loadAvailableFilterTags])
 
   // Handle realtime product changes
   const handleProductChange = useCallback((payload: any) => {
@@ -150,8 +186,12 @@ export default function Home() {
       
       try {
         console.log('Loading software data with admin status:', stableIsAdmin)
-        const data = await loadSoftwareData(stableIsAdmin)
+        const data = await loadSoftwareData()
         setSoftwareData(data)
+        
+        // Load available filter tags
+        await loadAvailableFilterTags()
+        
         const initialFeatured = getFeaturedSoftware(data, stableIsAdmin)
         console.log('Initial load - setting featured software with admin status:', stableIsAdmin, 'Results:', initialFeatured.length, 'items')
         setFilteredSoftware(initialFeatured)
@@ -183,7 +223,7 @@ export default function Home() {
     // Add a small delay to ensure auth state is stable
     const timer = setTimeout(loadData, 100)
     return () => clearTimeout(timer)
-  }, [stableIsAdmin, authLoading])
+  }, [stableIsAdmin, authLoading, loadAvailableFilterTags])
 
   // Load tags when user becomes admin
   useEffect(() => {
@@ -209,9 +249,12 @@ export default function Home() {
       focusTimer = setTimeout(async () => {
         try {
           console.log('Page focused, reloading software data with admin status:', stableIsAdmin)
-          const data = await loadSoftwareData(stableIsAdmin)
-          console.log('Loaded data with tags:', data.tags)
-          console.log('Available tags from getAvailableTags:', getAvailableTags(data, stableIsAdmin))
+          const data = await loadSoftwareData()
+          
+          // Load available filter tags
+          await loadAvailableFilterTags()
+          console.log('Loaded data and available tags')
+          
           setSoftwareData(data)
           // Maintain current filter when refreshing data
           if (activeFilter === 'Featured') {
@@ -255,7 +298,7 @@ export default function Home() {
         clearInterval(intervalTimer)
       }
     }
-  }, [activeFilter, stableIsAdmin, authLoading])
+  }, [activeFilter, stableIsAdmin, authLoading, loadAvailableFilterTags])
 
   // Handle filter changes
   const handleFilterChange = (filter: string) => {
@@ -379,54 +422,22 @@ export default function Home() {
     setDeletingTagId(tagId)
     
     try {
-      // First, get the tag name to remove it from products
-      const { data: tagData, error: tagError } = await supabase
-        .from('tags')
-        .select('name')
-        .eq('id', tagId)
-        .single()
+      console.log('Removing tag with ID:', tagId)
       
-      if (tagError || !tagData) {
-        console.error('Error fetching tag:', tagError)
+      // First, delete all product-tag relationships from the junction table
+      const { error: junctionError } = await supabase
+        .from('product_tags')
+        .delete()
+        .eq('tag_id', tagId)
+      
+      if (junctionError) {
+        console.error('Error deleting from product_tags junction table:', junctionError)
         return
       }
       
-      const tagName = tagData.name
-      console.log('Removing tag:', tagName, 'from all products')
+      console.log('Successfully deleted all product_tags relationships for tag:', tagId)
       
-      // Get all products that have this tag
-      const { data: products, error: productsError } = await supabase
-        .from('products')
-        .select('id, slug, tags')
-        .contains('tags', [tagName])
-      
-      if (productsError) {
-        console.error('Error fetching products with tag:', productsError)
-        return
-      }
-      
-      // Update each product to remove the tag
-      if (products && products.length > 0) {
-        console.log('Found', products.length, 'products with tag:', tagName)
-        
-        for (const product of products) {
-          const currentTags = Array.isArray(product.tags) ? product.tags : []
-          const updatedTags = currentTags.filter(tag => tag !== tagName)
-          
-          console.log('Updating product', product.slug, 'tags from', currentTags, 'to', updatedTags)
-          
-          const { error: updateError } = await supabase
-            .from('products')
-            .update({ tags: updatedTags })
-            .eq('id', product.id)
-          
-          if (updateError) {
-            console.error('Error updating product tags:', updateError)
-          }
-        }
-      }
-      
-      // Finally, delete the tag from the tags table
+      // Then, delete the tag from the tags table
       const { error: deleteError } = await supabase
         .from('tags')
         .delete()
@@ -464,35 +475,176 @@ export default function Home() {
   }
 
   const handleAddProduct = async () => {
-    if (!supabase || !productForm.software_name.trim()) return
+    if (!supabase || !productForm.software_name.trim() || addProductLoading) return
     
-    const slug = productForm.slug || productForm.software_name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    setAddProductLoading(true)
     
-    const { error } = await supabase
-      .from('products')
-      .insert({
-        ...productForm,
-        slug,
-        tags: productForm.tags
-      })
-    
-    if (!error) {
+    try {
+      console.log('Adding new product with form data:', productForm)
+      
+      const slug = productForm.slug || productForm.software_name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      
+      // Insert the product (excluding tags)
+      const { tags, ...productInsertData } = productForm
+      const { data: newProduct, error: insertError } = await supabase
+        .from('products')
+        .insert({
+          ...productInsertData,
+          slug
+        })
+        .select('id')
+        .single()
+      
+      if (insertError || !newProduct) {
+        console.error('Error inserting product:', insertError)
+        return
+      }
+      
+      const newProductId = newProduct.id
+      console.log('Successfully created product with ID:', newProductId)
+      
+      // Handle tags separately using junction table
+      if (productForm.tags && productForm.tags.length > 0) {
+        console.log('Adding tags to new product:', productForm.tags)
+        
+        // Get tag IDs for all the selected tags
+        const { data: tagData, error: tagError } = await supabase
+          .from('tags')
+          .select('id, name')
+          .in('name', productForm.tags)
+        
+        if (tagError) {
+          console.error('Error fetching tag IDs:', tagError)
+          return
+        }
+        
+        // Create tag relationships with order positions
+        const tagRelationships = tagData?.map((tag, index) => ({
+          product_id: newProductId,
+          tag_id: tag.id,
+          order_position: index
+        })) || []
+        
+        if (tagRelationships.length > 0) {
+          const { error: insertTagsError } = await supabase
+            .from('product_tags')
+            .insert(tagRelationships)
+          
+          if (insertTagsError) {
+            console.error('Error adding tags to new product:', insertTagsError)
+            return
+          }
+          
+          console.log('Successfully added tags to new product')
+        }
+      }
+      
+      console.log('Product creation completed successfully')
       resetProductForm()
       setShowAddProduct(false)
+      await refreshData()
+      
+    } catch (error) {
+      console.error('Error in handleAddProduct:', error)
+    } finally {
+      setAddProductLoading(false)
     }
   }
 
   const handleEditProduct = async (productId: string) => {
-    if (!supabase || !productForm.software_name.trim()) return
+    if (!supabase || !productForm.software_name.trim() || editProductLoading) return
     
-    const { error } = await supabase
-      .from('products')
-      .update(productForm)
-      .eq('id', productId)
+    setEditProductLoading(true)
     
-    if (!error) {
+    try {
+      console.log('Editing product:', productId, 'with form data:', productForm)
+      
+      // Get the actual product ID from the database using the slug
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('slug', productId)
+        .single()
+      
+      if (productError || !productData) {
+        console.error('Error fetching product for edit:', productError)
+        return
+      }
+      
+      const actualProductId = productData.id
+      console.log('Found product ID for edit:', actualProductId)
+      
+      // Update the product (excluding tags)
+      const { tags, ...productUpdateData } = productForm
+      const { error: updateError } = await supabase
+        .from('products')
+        .update(productUpdateData)
+        .eq('id', actualProductId)
+      
+      if (updateError) {
+        console.error('Error updating product:', updateError)
+        return
+      }
+      
+      console.log('Successfully updated product, now updating tags...')
+      
+      // Handle tags separately using junction table
+      // First, remove all existing tag relationships for this product
+      const { error: deleteTagsError } = await supabase
+        .from('product_tags')
+        .delete()
+        .eq('product_id', actualProductId)
+      
+      if (deleteTagsError) {
+        console.error('Error removing existing tags:', deleteTagsError)
+        return
+      }
+      
+      // Then, add new tag relationships
+      if (productForm.tags && productForm.tags.length > 0) {
+        console.log('Adding tags:', productForm.tags)
+        
+        // Get tag IDs for all the selected tags
+        const { data: tagData, error: tagError } = await supabase
+          .from('tags')
+          .select('id, name')
+          .in('name', productForm.tags)
+        
+        if (tagError) {
+          console.error('Error fetching tag IDs:', tagError)
+          return
+        }
+        
+        // Create tag relationships with order positions
+        const tagRelationships = tagData?.map((tag, index) => ({
+          product_id: actualProductId,
+          tag_id: tag.id,
+          order_position: index
+        })) || []
+        
+        if (tagRelationships.length > 0) {
+          const { error: insertTagsError } = await supabase
+            .from('product_tags')
+            .insert(tagRelationships)
+          
+          if (insertTagsError) {
+            console.error('Error adding new tags:', insertTagsError)
+            return
+          }
+          
+          console.log('Successfully added new tags')
+        }
+      }
+      
+      console.log('Product edit completed successfully')
       resetProductForm()
       setShowEditProduct(null)
+      await refreshData()
+      
+    } catch (error) {
+      console.error('Error in handleEditProduct:', error)
+    } finally {
+      setEditProductLoading(false)
     }
   }
 
@@ -524,33 +676,132 @@ export default function Home() {
     }
   }
 
+  const handleDeleteProduct = async (product: SoftwareItem) => {
+    if (!supabase) return
+    
+    const confirmed = window.confirm(`Are you sure you want to delete "${product.name}"? This action cannot be undone.`)
+    if (!confirmed) return
+    
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('slug', product.id)
+    
+    if (!error) {
+      // Remove from local status tracking
+      setProductPublishedStatus(prev => {
+        const newStatus = { ...prev }
+        delete newStatus[product.id]
+        return newStatus
+      })
+      // Refresh data to remove from UI
+      refreshData()
+    } else {
+      alert('Failed to delete product. Please try again.')
+    }
+  }
+
   const handleToggleProductTag = async (productId: string, tagName: string) => {
     if (!supabase || productTagLoading) return
     
     setProductTagLoading(productId)
     
     try {
-      const product = filteredSoftware.find(p => p.id === productId)
-      if (!product) return
+      console.log('Toggling tag:', tagName, 'for product:', productId)
       
-      const currentTags = Array.isArray(product.tags) ? product.tags : []
-      const hasTag = currentTags.includes(tagName)
+      // First, get the tag ID from the tag name
+      const { data: tagData, error: tagError } = await supabase
+        .from('tags')
+        .select('id')
+        .eq('name', tagName)
+        .single()
       
-      let newTags: string[]
-      if (hasTag) {
-        newTags = currentTags.filter(t => t !== tagName)
-      } else {
-        newTags = [...currentTags, tagName]
+      if (tagError || !tagData) {
+        console.error('Error fetching tag ID:', tagError)
+        return
       }
       
-      const { error } = await supabase
+      const tagId = tagData.id
+      console.log('Found tag ID:', tagId)
+      
+      // Get the actual product ID from the database using the slug
+      const { data: productData, error: productError } = await supabase
         .from('products')
-        .update({ tags: newTags })
+        .select('id')
         .eq('slug', productId)
+        .single()
       
-      if (!error) {
-        await refreshData()
+      if (productError || !productData) {
+        console.error('Error fetching product ID:', productError)
+        return
       }
+      
+      const actualProductId = productData.id
+      console.log('Found product ID:', actualProductId)
+      
+      // Check if the relationship already exists
+      const { data: existingRelation, error: checkError } = await supabase
+        .from('product_tags')
+        .select('id')
+        .eq('product_id', actualProductId)
+        .eq('tag_id', tagId)
+        .single()
+      
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error checking existing relationship:', checkError)
+        return
+      }
+      
+      if (existingRelation) {
+        // Relationship exists, remove it
+        console.log('Removing tag relationship')
+        const { error: deleteError } = await supabase
+          .from('product_tags')
+          .delete()
+          .eq('product_id', actualProductId)
+          .eq('tag_id', tagId)
+        
+        if (deleteError) {
+          console.error('Error removing tag relationship:', deleteError)
+          return
+        }
+        
+        console.log('Successfully removed tag relationship')
+      } else {
+        // Relationship doesn't exist, add it
+        console.log('Adding tag relationship')
+        
+        // Get the highest order position for this tag
+        const { data: maxOrderData } = await supabase
+          .from('product_tags')
+          .select('order_position')
+          .eq('tag_id', tagId)
+          .order('order_position', { ascending: false })
+          .limit(1)
+        
+        const nextOrderPosition = maxOrderData && maxOrderData.length > 0 
+          ? maxOrderData[0].order_position + 1 
+          : 0
+        
+        const { error: insertError } = await supabase
+          .from('product_tags')
+          .insert({
+            product_id: actualProductId,
+            tag_id: tagId,
+            order_position: nextOrderPosition
+          })
+        
+        if (insertError) {
+          console.error('Error adding tag relationship:', insertError)
+          return
+        }
+        
+        console.log('Successfully added tag relationship')
+      }
+      
+      // Refresh the data to show the changes
+      await refreshData()
+      
     } catch (error) {
       console.error('Error toggling product tag:', error)
     } finally {
@@ -606,6 +857,11 @@ export default function Home() {
 
   const getCardTransform = (toolId: string) => {
     if (hoveredCard !== toolId) return 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)'
+    
+    // Disable tilt animation in admin mode to prevent button interaction issues
+    if (stableIsAdmin) {
+      return 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(8px)'
+    }
     
     const rotateX = -mousePosition.y * 0.05
     const rotateY = mousePosition.x * 0.05
@@ -670,6 +926,13 @@ export default function Home() {
                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-full transition-colors"
               >
                 Tag Manager
+              </button>
+              
+              <button
+                onClick={() => setShowTagOrdering(true)}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-full transition-colors"
+              >
+                Tag Ordering
               </button>
               
               <button
@@ -763,7 +1026,7 @@ export default function Home() {
                 msOverflowStyle: 'none',
               }}
             >
-              {getAvailableTags(softwareData, stableIsAdmin).map((filter) => (
+              {availableFilterTags.map((filter: string) => (
                 <button
                   key={filter}
                   onClick={() => handleFilterChange(filter)}
@@ -840,285 +1103,277 @@ export default function Home() {
 
           {/* Flex Layout - Responsive cards with refined spacing */}
           <div className="flex flex-row flex-wrap justify-center items-stretch gap-3 sm:gap-4 lg:gap-5 max-w-7xl mx-auto px-2 sm:px-0">
-            {filteredSoftware.map((tool, index) => (
-              <div 
-                key={tool.id}
-                className={`w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)] xl:w-[calc(25%-0.9375rem)] min-w-[280px] max-w-[320px] rounded-lg p-4 sm:p-6 transition-all duration-500 ease-out relative flex flex-col ${
-                  !stableIsAdmin ? 'cursor-pointer' : ''
-                }`}
-                style={{
-                  backgroundColor: hoveredCard === tool.id ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
-                  border: `1px solid ${hoveredCard === tool.id ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
-                  transform: getCardTransform(tool.id),
-                  boxShadow: getCardShadow(tool.id),
-                  transformStyle: 'preserve-3d',
-                }}
-                onMouseMove={(e) => handleMouseMove(e, tool.id)}
-                onMouseLeave={handleMouseLeave}
-                onClick={!stableIsAdmin ? () => {
-                  if (tool.url && tool.url !== '#') {
-                    window.open(tool.url, '_blank', 'noopener,noreferrer')
-                  }
-                } : undefined}
-              >
-                {/* Admin controls and external link */}
-                <div className="absolute top-4 right-4 flex items-center gap-2">
-                  {/* New Tab Icon - Always visible on hover, clickable for link */}
-                  {hoveredCard === tool.id && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (tool.url && tool.url !== '#') {
-                          window.open(tool.url, '_blank', 'noopener,noreferrer')
-                        }
-                      }}
-                      className="p-1 hover:bg-white/10 rounded transition-colors"
-                    >
-                      <img 
-                        src="/newtab.svg" 
-                        alt="Open in new tab" 
-                        className="w-4 h-4 transition-all duration-500"
-                        style={{
-                          transform: 'translateZ(15px)',
-                          filter: 'brightness(0) saturate(100%) invert(100%) opacity(0.8)',
-                        }}
-                      />
-                    </button>
-                  )}
+            {filteredSoftware.map((tool, index) => {
+              // Debug logging for each product
+              console.log(`Rendering card ${index + 1}: ${tool.name}`)
+              console.log('  - Tool tags:', tool.tags, Array.isArray(tool.tags), tool.tags?.length)
+              console.log('  - Tool object:', tool)
+              
+              return (
+                <div 
+                  key={tool.id}
+                  className={`w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)] xl:w-[calc(25%-0.9375rem)] min-w-[280px] max-w-[320px] rounded-lg p-4 sm:p-6 transition-all duration-500 ease-out relative flex flex-col ${
+                    !stableIsAdmin ? 'cursor-pointer' : ''
+                  }`}
+                  style={{
+                    backgroundColor: hoveredCard === tool.id ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                    border: `1px solid ${hoveredCard === tool.id ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)'}`,
+                    transform: stableIsAdmin ? 'none' : getCardTransform(tool.id),
+                    boxShadow: getCardShadow(tool.id),
+                  }}
+                  onMouseMove={(e) => handleMouseMove(e, tool.id)}
+                  onMouseLeave={handleMouseLeave}
+                  onClick={!stableIsAdmin ? () => {
+                    if (tool.url && tool.url !== '#') {
+                      window.open(tool.url, '_blank', 'noopener,noreferrer')
+                    }
+                  } : undefined}
+                >
+                  {/* Admin controls and external link */}
+                  <div className="absolute top-4 right-4 flex items-center gap-2 z-50">
+                    {/* Admin Icon Buttons Panel - Order: Edit, Publish/Unpublish, Delete, New Tab */}
+                    {stableIsAdmin && hoveredCard === tool.id && (
+                      <>
+                        {/* Edit Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openEditModal(tool)
+                          }}
+                          className="p-1 hover:bg-blue-500/20 rounded transition-colors relative z-10"
+                          title="Edit"
+                        >
+                          <svg className="w-4 h-4 text-blue-400 hover:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
 
-                  {/* Admin Options Menu */}
-                  {stableIsAdmin && (
-                    <div className="relative">
+                        {/* Publish/Unpublish Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleTogglePublished(tool)
+                          }}
+                          className="p-1 hover:bg-blue-500/20 rounded transition-colors relative z-10"
+                          title={productPublishedStatus[tool.id] === false ? 'Publish' : 'Unpublish'}
+                        >
+                          {productPublishedStatus[tool.id] === false ? (
+                            <svg className="w-4 h-4 text-green-400 hover:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-yellow-400 hover:text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                            </svg>
+                          )}
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteProduct(tool)
+                          }}
+                          className="p-1 hover:bg-red-500/20 rounded transition-colors relative z-10"
+                          title="Delete"
+                        >
+                          <svg className="w-4 h-4 text-red-400 hover:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+
+                    {/* New Tab Icon - Always visible on hover, clickable for link */}
+                    {hoveredCard === tool.id && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setCardMenuOpen(cardMenuOpen === tool.id ? null : tool.id)
+                          if (tool.url && tool.url !== '#') {
+                            window.open(tool.url, '_blank', 'noopener,noreferrer')
+                          }
                         }}
-                        className="p-1 hover:bg-white/10 rounded transition-colors z-[10000]"
+                        className="p-1 hover:bg-white/10 rounded transition-colors relative z-10"
+                        title="Open in new tab"
                       >
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                        </svg>
+                        <img 
+                          src="/newtab.svg" 
+                          alt="Open in new tab" 
+                          className="w-4 h-4"
+                          style={{
+                            filter: 'brightness(0) saturate(100%) invert(100%) opacity(0.8)',
+                          }}
+                        />
                       </button>
+                    )}
+                  </div>
 
-                      {/* Dropdown Menu */}
-                      {cardMenuOpen === tool.id && (
-                        <div className="absolute top-8 right-0 bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[120px] z-[10001]">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openEditModal(tool)
-                              setCardMenuOpen(null)
-                            }}
-                            className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors rounded-t-lg first:rounded-t-lg"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleTogglePublished(tool)
-                              setCardMenuOpen(null)
-                            }}
-                            className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors last:rounded-b-lg"
-                          >
-                            {productPublishedStatus[tool.id] === false ? 'Publish' : 'Unpublish'}
-                          </button>
-                        </div>
+                  {/* Icon */}
+                  <div 
+                    className="text-3xl sm:text-4xl mb-3 sm:mb-4 transition-transform duration-500"
+                  >
+                    {tool.icon}
+                  </div>
+                  
+                  {/* Software Name with Unpublished Indicator */}
+                  <div className="mb-2 sm:mb-3">
+                    <div 
+                      className="flex flex-wrap items-center gap-2 transition-transform duration-500"
+                    >
+                      <h3 className="text-lg sm:text-xl font-semibold text-white">
+                        {tool.name}
+                      </h3>
+                      {/* Unpublished Indicator - Only show in admin mode when product is unpublished */}
+                      {stableIsAdmin && productPublishedStatus[tool.id] === false && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 whitespace-nowrap">
+                          Unpublished
+                        </span>
                       )}
                     </div>
-                  )}
-
-                  {/* Click-away overlay for options menu */}
-                  {cardMenuOpen === tool.id && (
-                    <div 
-                      className="fixed inset-0 z-[9999]" 
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setCardMenuOpen(null)
-                      }}
-                    />
-                  )}
-                </div>
-
-                {/* Icon */}
-                <div 
-                  className="text-3xl sm:text-4xl mb-3 sm:mb-4 transition-transform duration-500"
-                  style={{
-                    transform: hoveredCard === tool.id ? 'translateZ(12px)' : 'translateZ(0px)',
-                  }}
-                >
-                  {tool.icon}
-                </div>
-                
-                {/* Software Name with Unpublished Indicator */}
-                <div className="mb-2 sm:mb-3">
-                  <div 
-                    className="flex flex-wrap items-center gap-2 transition-transform duration-500"
-                    style={{
-                      transform: hoveredCard === tool.id ? 'translateZ(8px)' : 'translateZ(0px)',
-                    }}
+                  </div>
+                  
+                  {/* Description */}
+                  <p 
+                    className="text-gray-400 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 flex-grow transition-transform duration-500"
                   >
-                    <h3 className="text-lg sm:text-xl font-semibold text-white">
-                      {tool.name}
-                    </h3>
-                    {/* Unpublished Indicator - Only show in admin mode when product is unpublished */}
-                    {stableIsAdmin && productPublishedStatus[tool.id] === false && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 whitespace-nowrap">
-                        Unpublished
+                    {tool.description}
+                  </p>
+                  
+                  {/* Tags - Always at the bottom */}
+                  <div 
+                    className="flex flex-wrap gap-2 mt-auto transition-transform duration-500"
+                  >
+                    {/* Free tag for free products */}
+                    {tool.pricing === 'free' && (
+                      <span 
+                        className="px-3 py-1 text-xs font-medium rounded-full border"
+                        style={{
+                          backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                          borderColor: 'rgba(34, 197, 94, 0.4)',
+                          color: '#22c55e',
+                        }}
+                      >
+                        Free
                       </span>
+                    )}
+                    
+                    {/* Regular tags from database */}
+                    {tool.tags.map((tag, tagIndex) => (
+                      <div key={tagIndex} className="relative group z-10">
+                        <span 
+                          className="px-3 py-1 text-xs font-medium rounded-full border transition-all duration-200 inline-flex items-center relative overflow-hidden"
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                            color: '#ffffff',
+                            transform: stableIsAdmin ? 'translateZ(0px)' : 'translateZ(15px)',
+                            position: 'relative'
+                          }}
+                        >
+                          <span className={`transition-all duration-200 ${stableIsAdmin ? 'truncate group-hover:max-w-[calc(100%-13px)]' : ''}`}>
+                            {tag}
+                          </span>
+                          {/* Admin: X icon overlays on hover - Only show in admin mode */}
+                          {stableIsAdmin && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
+                                handleToggleProductTag(tool.id, tag)
+                              }}
+                              className="absolute right-1 top-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-red-400 hover:text-red-300 w-4 h-4 flex items-center justify-center text-sm font-bold"
+                              disabled={productTagLoading === tool.id}
+                              style={{
+                                transform: 'translateY(-50%)',
+                                position: 'absolute',
+                                zIndex: 10
+                              }}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* Admin: Add Tag Button */}
+                    {stableIsAdmin && (
+                      <div className="relative z-10">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            setShowTagDropdown(showTagDropdown === tool.id ? null : tool.id)
+                          }}
+                          disabled={productTagLoading === tool.id}
+                          className="relative z-10 px-3 py-1 text-xs font-medium rounded-full border border-dashed border-gray-500 text-gray-400 hover:border-gray-300 hover:text-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 min-w-[28px] min-h-[28px] justify-center bg-black/20 hover:bg-black/40"
+                          style={{
+                            position: 'relative'
+                          }}
+                        >
+                          {productTagLoading === tool.id ? (
+                            <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            '+'
+                          )}
+                        </button>
+
+                        {/* Tag Dropdown - Portal-style with fixed positioning */}
+                        {showTagDropdown === tool.id && (
+                          <>
+                            {/* Click-away backdrop */}
+                            <div 
+                              className="fixed inset-0 z-[9998]" 
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowTagDropdown(null)
+                              }}
+                              style={{ 
+                                backgroundColor: 'transparent',
+                                cursor: 'default'
+                              }}
+                            />
+                            {/* Dropdown content */}
+                            <div 
+                              className="absolute bottom-full left-0 mb-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[150px] max-h-[200px] overflow-y-auto"
+                              style={{ 
+                                zIndex: 9999,
+                                position: 'absolute'
+                              }}
+                            >
+                              {availableTags.map((tag) => (
+                                <button
+                                  key={tag.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    handleToggleProductTag(tool.id, tag.name)
+                                    setShowTagDropdown(null)
+                                  }}
+                                  disabled={productTagLoading === tool.id}
+                                  className={`w-full px-3 py-2 text-left text-sm transition-colors disabled:opacity-50 hover:bg-gray-600 ${
+                                    tool.tags.includes(tag.name)
+                                      ? 'text-green-400 bg-green-500/10'
+                                      : 'text-white'
+                                  }`}
+                                  style={{
+                                    position: 'relative',
+                                    zIndex: 10000
+                                  }}
+                                >
+                                  {tag.name} {tool.tags.includes(tag.name) ? '✓' : ''}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
-                
-                {/* Description */}
-                <p 
-                  className="text-gray-400 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 flex-grow transition-transform duration-500"
-                  style={{
-                    transform: hoveredCard === tool.id ? 'translateZ(6px)' : 'translateZ(0px)',
-                  }}
-                >
-                  {tool.description}
-                </p>
-                
-                {/* Tags - Always at the bottom */}
-                <div 
-                  className="flex flex-wrap gap-2 mt-auto transition-transform duration-500"
-                  style={{
-                    transform: hoveredCard === tool.id ? 'translateZ(10px)' : 'translateZ(0px)',
-                  }}
-                >
-                  {/* Free tag for free products */}
-                  {tool.pricing === 'free' && (
-                    <span 
-                      className="px-3 py-1 text-xs font-medium rounded-full border"
-                      style={{
-                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                        borderColor: 'rgba(34, 197, 94, 0.4)',
-                        color: '#22c55e',
-                      }}
-                    >
-                      Free
-                    </span>
-                  )}
-                  
-                  {/* Regular tags from database */}
-                  {tool.tags.map((tag, tagIndex) => (
-                    <div key={tagIndex} className="relative group z-10">
-                      <span 
-                        className="px-3 py-1 text-xs font-medium rounded-full border transition-all duration-200 inline-flex items-center relative overflow-hidden"
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          borderColor: 'rgba(255, 255, 255, 0.2)',
-                          color: '#ffffff',
-                          transform: 'translateZ(15px)',
-                          position: 'relative'
-                        }}
-                      >
-                        <span className="truncate transition-all duration-200 group-hover:max-w-[calc(100%-13px)]">
-                          {tag}
-                        </span>
-                        {/* Admin: X icon overlays on hover */}
-                        {stableIsAdmin && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              e.preventDefault()
-                              handleToggleProductTag(tool.id, tag)
-                            }}
-                            className="absolute right-1 top-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-red-400 hover:text-red-300 w-4 h-4 flex items-center justify-center text-sm font-bold"
-                            disabled={productTagLoading === tool.id}
-                            style={{
-                              transform: 'translateY(-50%) translateZ(20px)',
-                              position: 'absolute',
-                              zIndex: 10
-                            }}
-                          >
-                            ×
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-
-                  {/* Admin: Add Tag Button */}
-                  {stableIsAdmin && (
-                    <div className="relative z-10">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
-                          setShowTagDropdown(showTagDropdown === tool.id ? null : tool.id)
-                        }}
-                        disabled={productTagLoading === tool.id}
-                        className="relative z-10 px-3 py-1 text-xs font-medium rounded-full border border-dashed border-gray-500 text-gray-400 hover:border-gray-300 hover:text-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 min-w-[28px] min-h-[28px] justify-center bg-black/20 hover:bg-black/40"
-                        style={{ 
-                          transform: 'translateZ(20px)',
-                          position: 'relative'
-                        }}
-                      >
-                        {productTagLoading === tool.id ? (
-                          <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          '+'
-                        )}
-                      </button>
-
-                      {/* Tag Dropdown - Portal-style with fixed positioning */}
-                      {showTagDropdown === tool.id && (
-                        <>
-                          {/* Click-away backdrop */}
-                          <div 
-                            className="fixed inset-0 z-[9998]" 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setShowTagDropdown(null)
-                            }}
-                            style={{ 
-                              backgroundColor: 'transparent',
-                              cursor: 'default'
-                            }}
-                          />
-                          {/* Dropdown content */}
-                          <div 
-                            className="absolute bottom-full left-0 mb-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[150px] max-h-[200px] overflow-y-auto"
-                            style={{ 
-                              zIndex: 9999,
-                              transform: 'translateZ(30px)',
-                              position: 'absolute'
-                            }}
-                          >
-                            {availableTags.map((tag) => (
-                              <button
-                                key={tag.id}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  e.preventDefault()
-                                  handleToggleProductTag(tool.id, tag.name)
-                                  setShowTagDropdown(null)
-                                }}
-                                disabled={productTagLoading === tool.id}
-                                className={`w-full px-3 py-2 text-left text-sm transition-colors disabled:opacity-50 hover:bg-gray-600 ${
-                                  tool.tags.includes(tag.name)
-                                    ? 'text-green-400 bg-green-500/10'
-                                    : 'text-white'
-                                }`}
-                                style={{
-                                  position: 'relative',
-                                  zIndex: 10000
-                                }}
-                              >
-                                {tag.name} {tool.tags.includes(tag.name) ? '✓' : ''}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
@@ -1418,18 +1673,49 @@ export default function Home() {
                       setShowEditProduct(null)
                       resetProductForm()
                     }}
-                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                    disabled={editProductLoading || addProductLoading}
+                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    disabled={editProductLoading || addProductLoading}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
                   >
-                    {showAddProduct ? 'Add Product' : 'Update Product'}
+                    {(editProductLoading || addProductLoading) && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    )}
+                    {showAddProduct 
+                      ? (addProductLoading ? 'Adding Product...' : 'Add Product')
+                      : (editProductLoading ? 'Updating Product...' : 'Update Product')
+                    }
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tag Ordering Modal */}
+      {showTagOrdering && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[10000]">
+          <div className="bg-gray-900 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white">Tag-Based Product Ordering</h2>
+                <button
+                  onClick={() => setShowTagOrdering(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <TagOrdering isAdmin={stableIsAdmin} />
             </div>
           </div>
         </div>

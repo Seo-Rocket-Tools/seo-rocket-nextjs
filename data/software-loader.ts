@@ -1,4 +1,4 @@
-import { getActiveProducts, getFeaturedProducts, getProductsByTag, getAvailableTagsFromProducts, getAllProducts, Product, supabase } from '../lib/supabase'
+import { getActiveProducts, getFeaturedProducts, getProductsByTag, getAvailableTagsFromProducts, getAllProducts, Product, supabase, ProductWithTags, getProductsWithTagsByTag, getActiveProductsWithTags, getAllProductsWithTags, getFeaturedProductsWithTags } from '../lib/supabase'
 
 export interface SoftwareItem {
   id: string;
@@ -15,18 +15,19 @@ export interface SoftwareItem {
 }
 
 export interface SoftwareData {
-  metadata: {
-    lastUpdated: string;
-    version: string;
-    totalSoftware: number;
-  };
   software: SoftwareItem[];
-  tags: string[];
+  metadata: {
+    totalSoftware: number;
+    lastUpdated: string;
+  };
 }
 
-// Convert Supabase Product to SoftwareItem
+// Convert Supabase Product to SoftwareItem (legacy fallback)
 function convertProductToSoftwareItem(product: Product): SoftwareItem {
-  console.log('Converting product:', product.software_name, 'Tags field:', product.tags, 'Priority:', product.priority, 'Published:', product.published)
+  console.log('Converting product (legacy):', product.software_name)
+  console.log('  - Raw tags field:', product.tags, typeof product.tags)
+  console.log('  - Published:', product.published, typeof product.published)
+  console.log('  - Full product object:', product)
   
   let tagsArray: string[] = []
   
@@ -34,13 +35,49 @@ function convertProductToSoftwareItem(product: Product): SoftwareItem {
     if (Array.isArray(product.tags)) {
       // Tags are already an array from the database
       tagsArray = product.tags.filter(tag => tag && tag.trim().length > 0)
+      console.log('  - Processed as array:', tagsArray)
     } else if (typeof product.tags === 'string') {
       // Tags are a comma-separated string (fallback)
       tagsArray = product.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+      console.log('  - Processed as string:', tagsArray)
+    } else {
+      console.log('  - Tags field is not array or string:', typeof product.tags)
     }
+  } else {
+    console.log('  - No tags field found on product')
   }
   
-  console.log('Processed tags array:', tagsArray)
+  console.log('  - Final tags array:', tagsArray)
+  
+  const result = {
+    id: product.slug,
+    name: product.software_name,
+    icon: product.emoji,
+    description: product.description,
+    tags: tagsArray,
+    status: (product.published ? 'active' : 'coming-soon') as 'active' | 'beta' | 'coming-soon' | 'deprecated',
+    releaseDate: new Date(product.created_at).toISOString().split('T')[0],
+    featured: product.featured,
+    url: product.url,
+    pricing: (product.free ? 'free' : 'premium') as 'free' | 'premium' | 'freemium',
+    priority: product.priority || 100 // Include priority with fallback
+  }
+  
+  console.log('  - Final SoftwareItem:', result)
+  return result
+}
+
+// Convert ProductWithTags to SoftwareItem (new junction table structure)
+function convertProductWithTagsToSoftwareItem(product: ProductWithTags): SoftwareItem {
+  console.log('Converting product with tags:', product.software_name, 'Product tags:', product.product_tags)
+  
+  // Extract tag names from junction table data, ordered by order_position
+  const tagsArray = product.product_tags
+    .sort((a, b) => a.order_position - b.order_position)
+    .map(pt => pt.tag.name)
+    .filter(tag => tag && tag.trim().length > 0)
+  
+  console.log('Processed tags from junction table:', tagsArray)
   
   return {
     id: product.slug,
@@ -48,41 +85,152 @@ function convertProductToSoftwareItem(product: Product): SoftwareItem {
     icon: product.emoji,
     description: product.description,
     tags: tagsArray,
-    status: product.published ? 'active' : 'coming-soon', // Use different status for unpublished products
+    status: product.published ? 'active' : 'coming-soon',
     releaseDate: new Date(product.created_at).toISOString().split('T')[0],
     featured: product.featured,
     url: product.url,
-    pricing: product.free ? 'free' : 'premium', // Map free boolean to pricing
-    priority: product.priority || 100 // Include priority with fallback
+    pricing: product.free ? 'free' : 'premium',
+    priority: product.priority || 100
   }
 }
 
-export async function loadSoftwareData(isAdmin: boolean = false): Promise<SoftwareData> {
-  // Check if Supabase is configured
-  if (!supabase) {
-    throw new Error('Supabase not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
+export async function loadSoftwareData(): Promise<SoftwareData> {
+  try {
+    console.log('Loading software data using junction table approach...')
+    
+    // Try new junction table approach first
+    try {
+      const productsWithTags = await getAllProductsWithTags()
+      console.log('Successfully loaded products with junction table:', productsWithTags.length)
+      
+      const softwareItems = productsWithTags.map(convertProductWithTagsToSoftwareItem)
+      
+      console.log('Loaded software data (junction table):', {
+        totalItems: softwareItems.length,
+        sample: softwareItems.slice(0, 2)
+      })
+      
+      return {
+        software: softwareItems,
+        metadata: {
+          totalSoftware: softwareItems.length,
+          lastUpdated: new Date().toISOString().split('T')[0]
+        }
+      }
+    } catch (junctionError) {
+      console.log('Junction table approach failed, falling back to legacy approach:', junctionError)
+    }
+    
+    // Fallback to legacy approach
+    const products = await getAllProducts()
+    const softwareItems = products.map(convertProductToSoftwareItem)
+    
+    console.log('Loaded software data (legacy fallback):', {
+      totalItems: softwareItems.length,
+      sample: softwareItems.slice(0, 2)
+    })
+    
+    return {
+      software: softwareItems,
+      metadata: {
+        totalSoftware: softwareItems.length,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      }
+    }
+  } catch (error) {
+    console.error('Error loading software data from Supabase:', error)
+    return {
+      software: [],
+      metadata: {
+        totalSoftware: 0,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      }
+    }
   }
+}
 
-  console.log('Loading products from Supabase... Admin mode:', isAdmin)
-  const products = isAdmin ? await getAllProducts() : await getActiveProducts()
-  console.log('Loaded products:', products)
-  
-  const tags = await getAvailableTagsFromProducts(isAdmin)
-  console.log('Loaded tags:', tags)
-  
-  const softwareItems = products
-    .map(convertProductToSoftwareItem)
-    .sort((a, b) => (a.priority || 100) - (b.priority || 100))
-  console.log('Converted and sorted software items:', softwareItems)
-  
-  return {
-    metadata: {
-      lastUpdated: new Date().toISOString().split('T')[0],
-      version: '2.0.0',
-      totalSoftware: softwareItems.length
-    },
-    software: softwareItems,
-    tags: tags
+export async function loadSoftwareDataByTag(tagName: string, includeUnpublished: boolean = false): Promise<SoftwareData> {
+  try {
+    // Try new junction table approach first
+    if (supabase) {
+      try {
+        const productsWithTags = await getProductsWithTagsByTag(tagName, includeUnpublished)
+        const softwareItems = productsWithTags.map(convertProductWithTagsToSoftwareItem)
+        
+        console.log('Loaded software data by tag (junction table):', {
+          tag: tagName,
+          totalItems: softwareItems.length,
+          sample: softwareItems.slice(0, 2)
+        })
+        
+        return {
+          software: softwareItems,
+          metadata: {
+            totalSoftware: softwareItems.length,
+            lastUpdated: new Date().toISOString().split('T')[0]
+          }
+        }
+      } catch (error) {
+        console.log('Junction table query failed, falling back to old method:', error)
+      }
+    }
+    
+    // Fallback to old array-based approach
+    const products = await getProductsByTag(tagName, includeUnpublished)
+    const softwareItems = products.map(convertProductToSoftwareItem)
+    
+    console.log('Loaded software data by tag (fallback):', {
+      tag: tagName,
+      totalItems: softwareItems.length,
+      sample: softwareItems.slice(0, 2)
+    })
+    
+    return {
+      software: softwareItems,
+      metadata: {
+        totalSoftware: softwareItems.length,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      }
+    }
+  } catch (error) {
+    console.error('Error loading software data by tag:', error)
+    return {
+      software: [],
+      metadata: {
+        totalSoftware: 0,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      }
+    }
+  }
+}
+
+export async function loadFeaturedSoftwareData(): Promise<SoftwareData> {
+  try {
+    const products = await getFeaturedProducts()
+    
+    const softwareItems = products.map(convertProductToSoftwareItem)
+    
+    console.log('Loaded featured software data:', {
+      totalItems: softwareItems.length,
+      sample: softwareItems.slice(0, 2)
+    })
+    
+    return {
+      software: softwareItems,
+      metadata: {
+        totalSoftware: softwareItems.length,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      }
+    }
+  } catch (error) {
+    console.error('Error loading featured software data from Supabase:', error)
+    return {
+      software: [],
+      metadata: {
+        totalSoftware: 0,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      }
+    }
   }
 }
 
@@ -122,26 +270,23 @@ export function getSoftwareByTag(data: SoftwareData, tag: string, isAdmin: boole
 }
 
 export function getAvailableTags(data: SoftwareData, isAdmin: boolean = false): string[] {
-  // Start with the predefined tags array
-  const predefinedTags = [...data.tags];
+  // System tags that should always come first
+  const systemTags = ['Featured', 'Free', 'All'];
   
   // Collect all unique tags from software items
   const dynamicTags = new Set<string>();
   const itemsToProcess = isAdmin ? data.software : data.software.filter(item => item.status === 'active');
   
   itemsToProcess.forEach(item => {
-    item.tags.forEach(tag => dynamicTags.add(tag));
+    item.tags.forEach(tag => {
+      if (!systemTags.includes(tag)) {
+        dynamicTags.add(tag);
+      }
+    });
   });
   
-  // Merge predefined and dynamic tags, keeping the original order for system tags
-  const systemTags = ['Featured', 'Free', 'All']; // These should always come first
-  const otherPredefinedTags = predefinedTags.filter(tag => !systemTags.includes(tag));
-  const newDynamicTags = Array.from(dynamicTags).filter(tag => 
-    !predefinedTags.includes(tag) && !systemTags.includes(tag)
-  );
-  
-  // Return in order: System tags, predefined tags, new dynamic tags
-  return [...systemTags, ...otherPredefinedTags, ...newDynamicTags];
+  // Return in order: System tags first, then alphabetically sorted dynamic tags
+  return [...systemTags, ...Array.from(dynamicTags).sort()];
 }
 
 // Direct Supabase query functions for better performance when needed

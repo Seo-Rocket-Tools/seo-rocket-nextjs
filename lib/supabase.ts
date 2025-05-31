@@ -21,7 +21,7 @@ export interface Product {
   description: string
   emoji: string
   url: string
-  tags: string[] | string // Support both array and string formats for flexibility
+  tags: string[] | string // Keep for backward compatibility during migration
   published: boolean
   featured: boolean
   free: boolean
@@ -36,13 +36,31 @@ export interface Tag {
   created_at: string
 }
 
-// Database functions
+export interface ProductTag {
+  id: string
+  product_id: string
+  tag_id: string
+  order_position: number
+  created_at: string
+}
+
+export interface ProductWithTags extends Omit<Product, 'tags'> {
+  product_tags: Array<{
+    id: string
+    tag_id: string
+    order_position: number
+    tag: Tag
+  }>
+}
+
+// Database functions - Updated to use junction table by default
 export async function getActiveProducts(): Promise<Product[]> {
   if (!supabase) {
     console.warn('Supabase not configured, returning empty array')
     return []
   }
 
+  // Try to use the old method first for backward compatibility
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -51,6 +69,34 @@ export async function getActiveProducts(): Promise<Product[]> {
 
   if (error) {
     console.error('Error fetching products:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function getActiveProductsWithTags(): Promise<ProductWithTags[]> {
+  if (!supabase) {
+    console.warn('Supabase not configured, returning empty array')
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_tags(
+        id,
+        tag_id,
+        order_position,
+        tag:tags(id, name, created_at)
+      )
+    `)
+    .eq('published', true)
+    .order('priority', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching active products with tags:', error)
     return []
   }
 
@@ -76,6 +122,33 @@ export async function getAllProducts(): Promise<Product[]> {
   return data || []
 }
 
+export async function getAllProductsWithTags(): Promise<ProductWithTags[]> {
+  if (!supabase) {
+    console.warn('Supabase not configured, returning empty array')
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_tags(
+        id,
+        tag_id,
+        order_position,
+        tag:tags(id, name, created_at)
+      )
+    `)
+    .order('priority', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching all products with tags:', error)
+    return []
+  }
+
+  return data || []
+}
+
 export async function getFeaturedProducts(): Promise<Product[]> {
   if (!supabase) {
     console.warn('Supabase not configured, returning empty array')
@@ -91,6 +164,35 @@ export async function getFeaturedProducts(): Promise<Product[]> {
 
   if (error) {
     console.error('Error fetching featured products:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function getFeaturedProductsWithTags(): Promise<ProductWithTags[]> {
+  if (!supabase) {
+    console.warn('Supabase not configured, returning empty array')
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_tags(
+        id,
+        tag_id,
+        order_position,
+        tag:tags(id, name, created_at)
+      )
+    `)
+    .eq('published', true)
+    .eq('featured', true)
+    .order('priority', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching featured products with tags:', error)
     return []
   }
 
@@ -147,7 +249,38 @@ export async function getProductsByTag(tagName: string, includeUnpublished: bool
     return data || []
   }
 
-  // Use PostgreSQL array contains operator for array-based tags
+  // Try junction table approach first (for new system)
+  try {
+    const query = supabase
+      .from('products')
+      .select(`
+        *,
+        product_tags!inner(
+          order_position,
+          tag:tags!inner(name)
+        )
+      `)
+      .eq('product_tags.tag.name', tagName)
+      .order('product_tags.order_position', { ascending: true })
+
+    if (!includeUnpublished) {
+      query.eq('published', true)
+    }
+
+    const { data, error } = await query
+
+    if (!error && data && data.length > 0) {
+      console.log('Successfully used junction table for tag:', tagName)
+      return data
+    }
+    
+    console.log('Junction table query returned no results or failed, falling back to array method for tag:', tagName)
+  } catch (error) {
+    console.log('Junction table approach failed, falling back to array method for tag:', tagName, error)
+  }
+
+  // Fallback to old array-based approach
+  console.log('Using array-based fallback for tag:', tagName)
   const query = supabase
     .from('products')
     .select('*')
@@ -161,7 +294,7 @@ export async function getProductsByTag(tagName: string, includeUnpublished: bool
   const { data, error } = await query
 
   if (error) {
-    console.error('Error fetching products by tag:', error)
+    console.error('Error fetching products by tag (array fallback):', error)
     return []
   }
 
@@ -193,35 +326,234 @@ export async function getAvailableTagsFromProducts(includeUnpublished: boolean =
     return ['Featured', 'Free', 'All']
   }
 
-  const products = includeUnpublished ? await getAllProducts() : await getActiveProducts()
-  const tagSet = new Set<string>()
-  
-  // Extract tags from products - handle both array and string formats
-  products.forEach(product => {
-    if (product.tags) {
-      let tags: string[] = []
-      
-      if (Array.isArray(product.tags)) {
-        // Tags are already an array
-        tags = product.tags.filter(tag => tag && tag.trim().length > 0)
-      } else if (typeof product.tags === 'string') {
-        // Tags are a comma-separated string
-        tags = product.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-      }
-      
-      tags.forEach(tag => tagSet.add(tag))
+  try {
+    let query
+    
+    if (!includeUnpublished) {
+      // Filter out tags from unpublished products
+      query = supabase
+        .from('product_tags')
+        .select(`
+          tag:tags(name),
+          product:products!inner(published)
+        `)
+        .eq('products.published', true)
+        .order('tags.name')
+    } else {
+      // Get all tags regardless of product publish status
+      query = supabase
+        .from('product_tags')
+        .select(`
+          tag:tags(name)
+        `)
+        .order('tags.name')
     }
-  })
-  
-  // Get predefined tags from tags table
-  const predefinedTags = await getAllTags()
-  const predefinedTagNames = predefinedTags.map(tag => tag.name)
-  
-  // Combine system tags, predefined tags, and dynamic tags
-  const systemTags = ['Featured', 'Free', 'All']
-  const dynamicTags = Array.from(tagSet).filter(tag => 
-    !predefinedTagNames.includes(tag) && !systemTags.includes(tag)
-  )
-  
-  return [...systemTags, ...predefinedTagNames, ...dynamicTags]
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching tags from junction table:', error)
+      throw error
+    }
+
+    // Extract unique tag names
+    const tagSet = new Set<string>()
+    data?.forEach((item: any) => {
+      if (item.tag?.name) {
+        tagSet.add(item.tag.name)
+      }
+    })
+
+    // Add system tags
+    const systemTags = ['Featured', 'Free', 'All']
+    const availableTags = [...systemTags, ...Array.from(tagSet).sort()]
+
+    console.log('Available tags from junction table:', availableTags)
+    return availableTags
+
+  } catch (error) {
+    console.error('Junction table approach failed, falling back to simple tag list:', error)
+    
+    // Fallback: get all tags from the tags table
+    try {
+      const { data: allTags, error: tagError } = await supabase
+        .from('tags')
+        .select('name')
+        .order('name')
+
+      if (!tagError && allTags) {
+        const tagNames = allTags.map(tag => tag.name)
+        const systemTags = ['Featured', 'Free', 'All']
+        return [...systemTags, ...tagNames]
+      }
+    } catch (fallbackError) {
+      console.error('Fallback tag fetch also failed:', fallbackError)
+    }
+
+    return ['Featured', 'Free', 'All']
+  }
+}
+
+// New functions for managing product-tag relationships and ordering
+
+export async function getProductsWithTagsByTag(tagName: string, includeUnpublished: boolean = false): Promise<ProductWithTags[]> {
+  if (!supabase) {
+    console.warn('Supabase not configured, returning empty array')
+    return []
+  }
+
+  const query = supabase
+    .from('products')
+    .select(`
+      *,
+      product_tags!inner(
+        id,
+        tag_id,
+        order_position,
+        tag:tags!inner(id, name)
+      )
+    `)
+    .eq('product_tags.tag.name', tagName)
+    .order('product_tags.order_position', { ascending: true })
+
+  if (!includeUnpublished) {
+    query.eq('published', true)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Error fetching products with tags:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function addProductToTag(productId: string, tagId: string, orderPosition?: number): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  // If no order position specified, add to the end
+  if (orderPosition === undefined) {
+    const { data: existingTags } = await supabase
+      .from('product_tags')
+      .select('order_position')
+      .eq('tag_id', tagId)
+      .order('order_position', { ascending: false })
+      .limit(1)
+    
+    orderPosition = existingTags && existingTags.length > 0 ? existingTags[0].order_position + 1 : 0
+  }
+
+  const { error } = await supabase
+    .from('product_tags')
+    .insert({
+      product_id: productId,
+      tag_id: tagId,
+      order_position: orderPosition
+    })
+
+  if (error) {
+    console.error('Error adding product to tag:', error)
+    return false
+  }
+
+  return true
+}
+
+export async function removeProductFromTag(productId: string, tagId: string): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  const { error } = await supabase
+    .from('product_tags')
+    .delete()
+    .eq('product_id', productId)
+    .eq('tag_id', tagId)
+
+  if (error) {
+    console.error('Error removing product from tag:', error)
+    return false
+  }
+
+  return true
+}
+
+export async function updateProductTagOrder(productId: string, tagId: string, newOrderPosition: number): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  const { error } = await supabase
+    .from('product_tags')
+    .update({ order_position: newOrderPosition })
+    .eq('product_id', productId)
+    .eq('tag_id', tagId)
+
+  if (error) {
+    console.error('Error updating product tag order:', error)
+    return false
+  }
+
+  return true
+}
+
+export async function reorderProductsInTag(tagId: string, productIdOrder: string[]): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  try {
+    // Update all products in the tag with new order positions
+    const updates = productIdOrder.map((productId, index) => ({
+      product_id: productId,
+      tag_id: tagId,
+      order_position: index
+    }))
+
+    // Use upsert to update order positions
+    const { error } = await supabase
+      .from('product_tags')
+      .upsert(updates, { 
+        onConflict: 'product_id,tag_id',
+        ignoreDuplicates: false 
+      })
+
+    if (error) {
+      console.error('Error reordering products in tag:', error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in reorderProductsInTag:', error)
+    return false
+  }
+}
+
+export async function getProductTagsByTag(tagId: string): Promise<ProductTag[]> {
+  if (!supabase) {
+    console.warn('Supabase not configured, returning empty array')
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('product_tags')
+    .select('*')
+    .eq('tag_id', tagId)
+    .order('order_position', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching product tags:', error)
+    return []
+  }
+
+  return data || []
 } 
