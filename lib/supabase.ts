@@ -28,6 +28,9 @@ export interface Product {
   image_url: string
   created_at: string
   priority: number
+  featured_order: number
+  free_order: number
+  all_order: number
 }
 
 export interface Tag {
@@ -65,7 +68,7 @@ export async function getActiveProducts(): Promise<Product[]> {
     .from('products')
     .select('*')
     .eq('published', true)
-    .order('priority', { ascending: true })
+    .order('all_order', { ascending: true })
 
   if (error) {
     console.error('Error fetching products:', error)
@@ -93,7 +96,7 @@ export async function getActiveProductsWithTags(): Promise<ProductWithTags[]> {
       )
     `)
     .eq('published', true)
-    .order('priority', { ascending: true })
+    .order('all_order', { ascending: true })
 
   if (error) {
     console.error('Error fetching active products with tags:', error)
@@ -112,7 +115,7 @@ export async function getAllProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from('products')
     .select('*')
-    .order('priority', { ascending: true })
+    .order('all_order', { ascending: true })
 
   if (error) {
     console.error('Error fetching all products:', error)
@@ -139,7 +142,7 @@ export async function getAllProductsWithTags(): Promise<ProductWithTags[]> {
         tag:tags(id, name, created_at)
       )
     `)
-    .order('priority', { ascending: true })
+    .order('all_order', { ascending: true })
 
   if (error) {
     console.error('Error fetching all products with tags:', error)
@@ -160,7 +163,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
     .select('*')
     .eq('published', true)
     .eq('featured', true)
-    .order('priority', { ascending: true })
+    .order('featured_order', { ascending: true })
 
   if (error) {
     console.error('Error fetching featured products:', error)
@@ -189,7 +192,7 @@ export async function getFeaturedProductsWithTags(): Promise<ProductWithTags[]> 
     `)
     .eq('published', true)
     .eq('featured', true)
-    .order('priority', { ascending: true })
+    .order('featured_order', { ascending: true })
 
   if (error) {
     console.error('Error fetching featured products with tags:', error)
@@ -215,7 +218,7 @@ export async function getProductsByTag(tagName: string, includeUnpublished: bool
         .from('products')
         .select('*')
         .eq('featured', true)
-        .order('priority', { ascending: true })
+        .order('featured_order', { ascending: true })
 
       if (error) {
         console.error('Error fetching all featured products:', error)
@@ -233,7 +236,7 @@ export async function getProductsByTag(tagName: string, includeUnpublished: bool
       .from('products')
       .select('*')
       .eq('free', true)
-      .order('priority', { ascending: true })
+      .order('free_order', { ascending: true })
 
     if (!includeUnpublished) {
       query.eq('published', true)
@@ -504,16 +507,38 @@ export async function updateProductTagOrder(productId: string, tagId: string, ne
   return true
 }
 
-export async function reorderProductsInTag(tagId: string, productIdOrder: string[]): Promise<boolean> {
+export async function reorderProductsInTag(tagId: string, productSlugOrder: string[]): Promise<boolean> {
   if (!supabase) {
     console.warn('Supabase not configured')
     return false
   }
 
   try {
+    // First, convert slugs to actual product IDs
+    const { data: products, error: fetchError } = await supabase
+      .from('products')
+      .select('id, slug')
+      .in('slug', productSlugOrder)
+
+    if (fetchError) {
+      console.error('Error fetching product IDs from slugs:', fetchError)
+      return false
+    }
+
+    if (!products || products.length !== productSlugOrder.length) {
+      console.error('Could not find all products for the provided slugs')
+      return false
+    }
+
+    // Create a slug-to-ID mapping
+    const slugToIdMap: Record<string, string> = {}
+    products.forEach(product => {
+      slugToIdMap[product.slug] = product.id
+    })
+
     // Update all products in the tag with new order positions
-    const updates = productIdOrder.map((productId, index) => ({
-      product_id: productId,
+    const updates = productSlugOrder.map((slug, index) => ({
+      product_id: slugToIdMap[slug],
       tag_id: tagId,
       order_position: index
     }))
