@@ -3,3 +3,9 @@
   to = "https://geocentricplugin-landing.netlify.app/:splat"
   status = 200
   force = true
+  headers = {X-From = "seorocket"}
+
+[[headers]]
+  for = "/geocentric-plugin/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
