@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "/geocentric-plugin/*"
+  to = "https://geocentricplugin-landing.netlify.app/:splat"
+  status = 200
+  force = true
