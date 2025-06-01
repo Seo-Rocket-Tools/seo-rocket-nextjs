@@ -5,7 +5,7 @@ import type { Metadata } from 'next'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'SEO Rocket - SaaS Landing Page',
+  title: 'SEO Rocket - Free Productivity Tools',
   description: 'Boost your website rankings with SEO Rocket',
   icons: {
     icon: '/favicon.png',
