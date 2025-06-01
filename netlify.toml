@@ -1,11 +1,24 @@
-[[redirects]]
-  from = "/geocentric-plugin/*"
-  to = "https://geocentricplugin-landing.netlify.app/:splat"
-  status = 200
-  force = true
-  headers = {X-From = "seorocket"}
+[[headers]]
+for = "/geocentric-plugin/*"
+  [headers.values]
+  X-Frame-Options = "SAMEORIGIN"
 
 [[headers]]
-  for = "/geocentric-plugin/*"
+for = "/_next/static/*"
   [headers.values]
-    X-Frame-Options = "SAMEORIGIN"
+  Cache-Control = "public, max-age=31536000, immutable"
+
+# IMPORTANT: Add these BEFORE the general _next redirects
+[[redirects]]
+from = "/geocentric-plugin/_next/*"
+to = "https://geocentricplugin-landing.netlify.app/_next/:splat"
+status = 200
+force = true
+
+[[redirects]]
+from = "/geocentric-plugin/*"
+to = "https://geocentricplugin-landing.netlify.app/:splat"
+status = 200
+force = true
+  [redirects.headers]
+  X-From = "seorocket"
