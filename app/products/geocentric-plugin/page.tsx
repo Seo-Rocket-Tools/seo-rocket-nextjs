@@ -1,8 +1,30 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
+import Image from 'next/image'
+import dynamic from 'next/dynamic'
+import './critical.css'
+
+// Import types for the dynamic components
+import type { TestimonialsSectionProps } from './components/TestimonialsSection'
+import type { FAQSectionProps } from './components/FAQSection'
+
+// Dynamically import heavy components with proper types
+const TestimonialsSection = dynamic<TestimonialsSectionProps>(() => import('./components/TestimonialsSection'), {
+  loading: () => (
+    <div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-96 rounded-xl"></div>
+  ),
+  ssr: false
+})
+
+const FAQSection = dynamic<FAQSectionProps>(() => import('./components/FAQSection'), {
+  loading: () => (
+    <div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-96 rounded-xl"></div>
+  ),
+  ssr: false
+})
 
 export default function GeocentricPluginPage() {
   const [isDarkMode, setIsDarkMode] = useState(true)
@@ -419,6 +441,18 @@ export default function GeocentricPluginPage() {
         <meta name="twitter:title" content="Geocentric Plugin - WordPress Local SEO Plugin" />
         <meta name="twitter:description" content="Boost local SEO with Geocentric Plugin. Automatically embed Google location data for better local search rankings." />
         <link rel="canonical" href="https://seorockettools.com/products/geocentric-plugin" />
+        
+        {/* Preload critical assets */}
+        <link
+          rel="preload"
+          href={isDarkMode ? "/seo-rocket-light.svg" : "/seo-rocket-dark.svg"}
+          as="image"
+        />
+        <link
+          rel="preload"
+          href="/geocentric-demo.gif"
+          as="image"
+        />
       </Head>
       
       <main className={`min-h-screen transition-colors duration-300 ${themeClasses}`}>
@@ -454,51 +488,40 @@ export default function GeocentricPluginPage() {
           </button>
         </div>
 
-        {/* Background Effects */}
-        {isDarkMode && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div 
-              className="absolute w-[800px] h-[800px] rounded-full opacity-40 blur-3xl"
-              style={{
-                background: 'radial-gradient(circle, rgba(147, 51, 234, 0.6) 0%, rgba(139, 69, 219, 0.3) 40%, transparent 70%)',
-                top: '-400px',
-                right: '-400px',
-              }}
-            />
-          </div>
-        )}
-
-        {/* Hero Section */}
-        <header className="px-4 sm:px-6 py-16 sm:py-24 relative z-10">
+        {/* Hero Section with Critical CSS Classes */}
+        <header className="hero-section px-4 sm:px-6 py-16 sm:py-24 relative z-10">
           <div className="max-w-7xl mx-auto">
-            {/* Logo */}
-            <div className="mb-12 sm:mb-16 text-center">
+            {/* Logo with Critical CSS */}
+            <div className="logo-container mb-12 sm:mb-16 text-center">
               <Link href="/">
-                <img
+                <Image
                   src={isDarkMode ? "/seo-rocket-light.svg" : "/seo-rocket-dark.svg"}
                   alt="SEO Rocket Tools - Professional WordPress SEO Plugins and Local Search Optimization Software"
+                  width={200}
+                  height={60}
                   className="mx-auto w-[160px] sm:w-[200px] h-[48px] sm:h-[60px] object-contain"
+                  priority
                 />
               </Link>
             </div>
 
-            {/* Centered content layout */}
+            {/* Centered content layout with Critical CSS */}
             <div className="text-center space-y-12 sm:space-y-16">
-              {/* Title and Description */}
+              {/* Title and Description with Critical CSS */}
               <div className="space-y-8 sm:space-y-10 max-w-5xl mx-auto">
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
+                <h1 className="hero-title text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
                   Geocentric{' '}
                   <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                     Plugin
                   </span>
                 </h1>
                 
-                <p className={`text-xl leading-relaxed max-w-4xl mx-auto ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <p className={`hero-description text-xl leading-relaxed max-w-4xl mx-auto ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Choose any city or town and <strong className={`font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>instantly embed</strong> <strong className={`font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>hyper-relevant location data</strong> from <strong className={`font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>Google</strong>: local weather, history & population, neighborhoods, things to do, bus stops, driving directions, and local maps. 
                   Create location pages that <strong className={`font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>Google loves</strong> for <strong className={`font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>maximum SEO impact</strong>.
                 </p>
 
-                <div className="flex justify-center pt-6">
+                <div className="hero-cta flex justify-center pt-6">
                   <button 
                     onClick={scrollToPricing}
                     className={`group relative px-8 py-4 text-lg font-semibold rounded-xl border-2 transition-all duration-300 hover:scale-105 overflow-hidden ${
@@ -525,67 +548,26 @@ export default function GeocentricPluginPage() {
                 </div>
               </div>
 
-              {/* Demo Showcase - Positioned Higher */}
+              {/* Demo Showcase with Critical CSS */}
               <div className="relative max-w-6xl mx-auto pt-4 sm:pt-6">
-                {/* Clean Demo Container */}
                 <div className="relative group">
-                  {/* Subtle background glow */}
                   {isDarkMode && (
                     <div className="absolute inset-0 bg-gradient-to-r from-purple-500/8 to-blue-500/8 rounded-3xl blur-3xl scale-105 opacity-50 group-hover:opacity-70 transition-all duration-700"></div>
                   )}
                   
-                  {/* Main Demo Frame */}
                   <div className={`relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl border transition-all duration-500 hover:shadow-2xl ${
                     isDarkMode 
                       ? 'border-white/5 shadow-black/20 hover:border-white/10' 
                       : 'border-black/5 shadow-black/10 hover:border-black/10'
                   }`}>
-                    <img
+                    <Image
                       src="/geocentric-demo.gif"
                       alt="Geocentric WordPress Plugin demo showing automatic Google location data embedding for local SEO - weather, demographics, maps, and directions integration workflow"
+                      width={1200}
+                      height={675}
                       className="w-full h-auto object-cover"
+                      priority
                     />
-                  </div>
-
-                  {/* Elegant corner accents */}
-                  {isDarkMode && (
-                    <>
-                      <div className="absolute -top-3 -right-3 w-6 h-6 bg-purple-500/30 rounded-full blur-sm opacity-60"></div>
-                      <div className="absolute -bottom-3 -left-3 w-4 h-4 bg-blue-500/40 rounded-full blur-sm opacity-50"></div>
-                    </>
-                  )}
-                </div>
-
-                {/* Feature callouts below demo */}
-                <div className="grid sm:grid-cols-3 gap-6 mt-12 sm:mt-16 max-w-4xl mx-auto">
-                  <div className="text-center">
-                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${
-                      isDarkMode ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-500/10 text-purple-600'
-                    }`}>
-                      ⚡
-                    </div>
-                    <h3 className={`font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-black'}`}>Instant Setup</h3>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Choose your location and watch it work</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${
-                      isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-500/10 text-emerald-600'
-                    }`}>
-                      🎯
-                    </div>
-                    <h3 className={`font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-black'}`}>Google Data</h3>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Real data from trusted sources</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${
-                      isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-500/10 text-blue-600'
-                    }`}>
-                      📈
-                    </div>
-                    <h3 className={`font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-black'}`}>SEO Boost</h3>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Instant local relevance signals</p>
                   </div>
                 </div>
               </div>
@@ -648,115 +630,27 @@ export default function GeocentricPluginPage() {
           </div>
         </section>
 
-        {/* Testimonials Section */}
-        <section className="px-4 sm:px-6 py-16 sm:py-20 relative z-10">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
-                Real Results from Real Users
-              </h2>
-              <p className={`text-lg sm:text-xl max-w-3xl mx-auto ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Over 1,100+ site activations and counting. See what our customers are saying about their ranking improvements.
-              </p>
-            </div>
-
-            {/* Testimonials Carousel */}
-            <div className="relative">
-              {/* Scrollable Container */}
-              <div 
-                id="testimonials-container"
-                className="flex gap-8 overflow-x-auto scrollbar-hide px-12 sm:px-16 py-2 cursor-grab active:cursor-grabbing"
-                style={{
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none',
-                }}
-                onMouseEnter={() => setIsTestimonialsHovered(true)}
-                onMouseLeave={handleMouseLeave}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-              >
-                {/* Render testimonials twice for infinite scroll */}
-                {[...testimonials, ...testimonials].map((testimonial, index) => (
-                  <div
-                    key={index}
-                    className={`flex-shrink-0 w-[350px] p-6 rounded-2xl border transition-all duration-300 hover:scale-105 ${cardClasses}`}
-                    style={{ scrollSnapAlign: 'start' }}
-                  >
-                    <div className="flex items-center mb-4">
-                      <div className="mr-4">
-                        <img
-                          src={testimonial.avatar}
-                          alt={`${testimonial.name} - ${testimonial.role} testimonial for Geocentric Plugin local SEO results`}
-                          className="w-16 h-16 rounded-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold truncate">{testimonial.name}</h4>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} line-clamp-2`}>
-                          {testimonial.role}
-                        </p>
-                      </div>
-                    </div>
-                    <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} leading-relaxed text-sm`}>
-                      {testimonial.content}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Gradient Overlays */}
-              <div className="absolute left-0 top-0 bottom-0 w-12 pointer-events-none z-10" style={{
-                background: isDarkMode 
-                  ? 'linear-gradient(to right, #000000 0%, rgba(0,0,0,0.8) 50%, transparent 100%)'
-                  : 'linear-gradient(to right, #ffffff 0%, rgba(255,255,255,0.8) 50%, transparent 100%)'
-              }} />
-              <div className="absolute right-0 top-0 bottom-0 w-12 pointer-events-none z-10" style={{
-                background: isDarkMode 
-                  ? 'linear-gradient(to left, #000000 0%, rgba(0,0,0,0.8) 50%, transparent 100%)'
-                  : 'linear-gradient(to left, #ffffff 0%, rgba(255,255,255,0.8) 50%, transparent 100%)'
-              }} />
-
-              {/* Left Arrow */}
-              <div className="absolute left-2 top-1/2 -translate-y-1/2 z-50">
-                <button
-                  onClick={() => {
-                    console.log('Left arrow clicked') // Debug log
-                    scrollTestimonials('left')
-                  }}
-                  className={`w-10 h-10 rounded-full border transition-all duration-300 flex items-center justify-center cursor-pointer ${
-                    isDarkMode 
-                      ? 'bg-black/80 border-white/20 text-white hover:bg-black hover:border-white/30' 
-                      : 'bg-white/80 border-black/20 text-black hover:bg-white hover:border-black/30'
-                  } shadow-lg backdrop-blur-sm`}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Right Arrow */}
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 z-50">
-                <button
-                  onClick={() => {
-                    console.log('Right arrow clicked') // Debug log
-                    scrollTestimonials('right')
-                  }}
-                  className={`w-10 h-10 rounded-full border transition-all duration-300 flex items-center justify-center cursor-pointer ${
-                    isDarkMode 
-                      ? 'bg-black/80 border-white/20 text-white hover:bg-black hover:border-white/30' 
-                      : 'bg-white/80 border-black/20 text-black hover:bg-white hover:border-black/30'
-                  } shadow-lg backdrop-blur-sm`}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
+        {/* Testimonials Section - Dynamically Loaded */}
+        <Suspense fallback={
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-96 rounded-xl">
+            <div className="max-w-6xl mx-auto px-4 py-16">
+              <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/3 mx-auto mb-4"></div>
+              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-2/3 mx-auto"></div>
             </div>
           </div>
-        </section>
+        }>
+          <TestimonialsSection 
+            isDarkMode={isDarkMode}
+            testimonials={testimonials}
+            isTestimonialsHovered={isTestimonialsHovered}
+            setIsTestimonialsHovered={setIsTestimonialsHovered}
+            handleMouseLeave={handleMouseLeave}
+            handleMouseDown={handleMouseDown}
+            handleMouseMove={handleMouseMove}
+            handleMouseUp={handleMouseUp}
+            cardClasses={cardClasses}
+          />
+        </Suspense>
 
         {/* Pricing Section */}
         <section id="pricing-section" className="px-4 sm:px-6 py-16 sm:py-20 relative z-10">
@@ -906,52 +800,22 @@ export default function GeocentricPluginPage() {
           </div>
         </section>
 
-        {/* FAQ Section */}
-        <section className="px-4 sm:px-6 py-16 sm:py-20 relative z-10">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
-                Frequently Asked Questions
-              </h2>
-              <p className={`text-lg sm:text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Got questions? We've got answers.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {faqs.map((faq, index) => (
-                <div
-                  key={index}
-                  className={`border rounded-2xl overflow-hidden ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}
-                >
-                  <button
-                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                    className={`w-full px-6 py-6 text-left flex items-center justify-between transition-colors ${
-                      isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'
-                    }`}
-                  >
-                    <h3 className="text-lg font-semibold">{faq.question}</h3>
-                    <svg
-                      className={`w-6 h-6 transition-transform duration-300 ${
-                        openFaq === index ? 'rotate-180' : ''
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {openFaq === index && (
-                    <div className={`px-6 pb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <p className="leading-relaxed">{faq.answer}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
+        {/* FAQ Section - Dynamically Loaded */}
+        <Suspense fallback={
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-96 rounded-xl">
+            <div className="max-w-4xl mx-auto px-4 py-16">
+              <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/3 mx-auto mb-4"></div>
+              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-2/3 mx-auto"></div>
             </div>
           </div>
-        </section>
+        }>
+          <FAQSection 
+            isDarkMode={isDarkMode}
+            faqs={faqs}
+            openFaq={openFaq}
+            setOpenFaq={setOpenFaq}
+          />
+        </Suspense>
 
         {/* CTA Section */}
         <section className="px-4 sm:px-6 py-16 sm:py-20 relative z-10">
