@@ -198,6 +198,10 @@ export default function Home() {
   // State for available filter tags
   const [availableFilterTags, setAvailableFilterTags] = useState<string[]>(['Featured', 'Free', 'All'])
   const [savedFilters, setSavedFilters] = useState<Set<string>>(new Set())
+  
+  // Blog scroll state
+  const [canScrollBlogLeft, setCanScrollBlogLeft] = useState(false)
+  const [canScrollBlogRight, setCanScrollBlogRight] = useState(false)
 
   // Load saved filters from localStorage on mount
   useEffect(() => {
@@ -490,6 +494,25 @@ export default function Home() {
     setTimeout(() => updateScrollState(), 300)
   }
 
+  // Handle blog scroll
+  const scrollBlogs = (direction: 'left' | 'right') => {
+    const container = document.getElementById('blog-container')
+    if (!container) return
+    
+    const scrollAmount = 320 // Width of one blog card plus gap
+    const newScrollLeft = direction === 'left' 
+      ? Math.max(0, container.scrollLeft - scrollAmount)
+      : Math.min(container.scrollWidth - container.clientWidth, container.scrollLeft + scrollAmount)
+    
+    container.scrollTo({
+      left: newScrollLeft,
+      behavior: 'smooth'
+    })
+    
+    // Update scroll state after a brief delay to account for smooth scrolling
+    setTimeout(() => updateBlogScrollState(), 300)
+  }
+
   // Update scroll state
   const updateScrollState = () => {
     const container = document.getElementById('filter-container')
@@ -514,11 +537,25 @@ export default function Home() {
     })
   }
 
+  // Update blog scroll state
+  const updateBlogScrollState = () => {
+    const container = document.getElementById('blog-container')
+    if (!container) return
+    
+    const isScrollable = container.scrollWidth > container.clientWidth
+    const isAtStart = container.scrollLeft <= 1
+    const isAtEnd = container.scrollLeft >= container.scrollWidth - container.clientWidth - 1
+    
+    setCanScrollBlogLeft(isScrollable && !isAtStart)
+    setCanScrollBlogRight(isScrollable && !isAtEnd)
+  }
+
   // Check scroll state on mount and resize
   useEffect(() => {
     if (!softwareData) return
     
     const container = document.getElementById('filter-container')
+    const blogContainer = document.getElementById('blog-container')
     if (!container) return
     
     const handleScroll = () => {
@@ -526,19 +563,28 @@ export default function Home() {
       updateScrollState()
     }
     
+    const handleBlogScroll = () => {
+      updateBlogScrollState()
+    }
+    
     const handleResize = () => {
       console.log('Resize event triggered')
       updateScrollState()
+      updateBlogScrollState()
     }
     
     // Add event listeners
     container.addEventListener('scroll', handleScroll, { passive: true })
+    if (blogContainer) {
+      blogContainer.addEventListener('scroll', handleBlogScroll, { passive: true })
+    }
     window.addEventListener('resize', handleResize)
     
     // Initial check with multiple attempts to ensure container is ready
     const checkInitialState = () => {
       console.log('Checking initial scroll state')
       updateScrollState()
+      updateBlogScrollState()
     }
     
     // Check immediately and with delays
@@ -549,6 +595,9 @@ export default function Home() {
     
     return () => {
       container.removeEventListener('scroll', handleScroll)
+      if (blogContainer) {
+        blogContainer.removeEventListener('scroll', handleBlogScroll)
+      }
       window.removeEventListener('resize', handleResize)
     }
   }, [softwareData])
@@ -1656,7 +1705,7 @@ export default function Home() {
                   <span className="text-purple-300 text-sm font-medium">Born from Frustration 😅</span>
                 </div>
                 
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
                   We understand your
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400"> daily challenges</span>
                 </h2>
@@ -1788,110 +1837,246 @@ export default function Home() {
       {/* Recent Posts/Blogs Section */}
       <section className="px-4 sm:px-6 py-16 sm:py-24 relative z-10">
         <div className="max-w-7xl mx-auto">
-          {/* Section Header */}
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">
-              Latest Insights
-            </h2>
-            <div className="w-20 h-1 bg-gradient-to-r from-purple-500 to-blue-500 mx-auto rounded-full mb-4"></div>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-              Stay ahead with actionable tips, industry updates, and strategies from our team
-            </p>
+          {/* Section Header - Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-end mb-12 sm:mb-16">
+            {/* Left Column - Header Content */}
+            <div>
+              <div className="inline-flex items-center px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-full mb-6">
+                <svg className="w-5 h-5 text-purple-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                <span className="text-purple-300 text-sm font-medium">Knowledge Base</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
+                Latest 
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400"> Insights</span>
+              </h2>
+              <p className="text-lg text-gray-400 leading-relaxed">
+                Exclusive strategies and insider knowledge from agency owners who've scaled to 100+ clients
+              </p>
+            </div>
+
+            {/* Right Column - Navigation & Stats */}
+            <div className="flex flex-col lg:items-end gap-4">
+              <div className="flex items-center gap-6 text-sm text-gray-500">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span>Updated Weekly</span>
+                </div>
+                <div>
+                  <span className="text-white font-semibold">12</span> Articles
+                </div>
+              </div>
+              <div className="flex justify-end items-center gap-4">
+                <button 
+                  onClick={() => scrollBlogs('left')}
+                  disabled={!canScrollBlogLeft}
+                  className={`w-12 h-12 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                    canScrollBlogLeft 
+                      ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 cursor-pointer' 
+                      : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={() => scrollBlogs('right')}
+                  disabled={!canScrollBlogRight}
+                  className={`w-12 h-12 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                    canScrollBlogRight 
+                      ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 cursor-pointer' 
+                      : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Horizontal Scrollable Blog Cards */}
+          {/* Premium Blog Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            {/* Featured Post - Large */}
+            <div className="lg:col-span-2">
+              <article className="bg-white/5 border border-white/10 rounded-2xl p-8 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group h-full relative overflow-hidden">
+                {/* Featured Badge */}
+                <div className="absolute top-6 right-6 px-3 py-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-medium rounded-full">
+                  Featured
+                </div>
+                
+                {/* Visual Header */}
+                <div className="h-48 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-xl mb-8 flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-blue-600/10"></div>
+                  <svg className="w-16 h-16 text-purple-400 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  {/* Floating Elements */}
+                  <div className="absolute top-4 right-4 w-6 h-6 bg-blue-500/30 rounded-full blur-sm"></div>
+                  <div className="absolute bottom-4 left-4 w-8 h-8 bg-purple-500/20 rounded-full blur-lg"></div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full border border-green-500/30">
+                      Growth Strategy
+                    </span>
+                    <span className="text-xs text-gray-500">Featured • 12 min read</span>
+                  </div>
+                  
+                  <h3 className="text-2xl sm:text-3xl font-bold text-white group-hover:text-purple-300 transition-colors leading-tight">
+                    The $100K Agency Blueprint: How We Scaled Without Burnout
+                  </h3>
+                  
+                  <p className="text-gray-400 leading-relaxed">
+                    The exact step-by-step system we used to grow from $10K to $100K MRR in 18 months, including our complete tech stack, pricing strategy, and the automation workflows that saved us 40+ hours per week.
+                  </p>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-sm font-semibold">SR</span>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-white">SEO Rocket Team</div>
+                        <div className="text-xs text-gray-500">Dec 15, 2024</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span>1.2k views</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                        <span>89</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            {/* Secondary Post */}
+            <div>
+              <article className="bg-white/5 border border-white/10 rounded-xl p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group h-full">
+                <div className="h-32 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg mb-6 flex items-center justify-center">
+                  <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                  </svg>
+                </div>
+                <div className="space-y-3">
+                  <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-medium rounded-full border border-blue-500/30">
+                    Chrome Extensions
+                  </span>
+                  <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">
+                    15 Must-Have Extensions for Digital Marketers
+                  </h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Browser extensions that every agency should install to boost productivity and client results.
+                  </p>
+                  <div className="flex items-center justify-between pt-3">
+                    <span className="text-xs text-gray-500">5 min read</span>
+                    <time className="text-xs text-gray-500">Dec 12, 2024</time>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          {/* Horizontal Scrollable Additional Posts */}
           <div className="relative">
-            {/* Gradient Overlays */}
+            {/* Gradient Overlays for Faded Edges */}
             <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-black via-black/80 to-transparent z-10 pointer-events-none" />
             <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-black via-black/80 to-transparent z-10 pointer-events-none" />
             
             {/* Scrollable Container */}
-            <div className="overflow-x-auto scrollbar-hide pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div 
+              id="blog-container"
+              className="overflow-x-auto scrollbar-hide pb-4" 
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
               <div className="flex gap-6 px-8" style={{ width: 'fit-content' }}>
                 {/* Blog Card 1 */}
-                <article className="flex-shrink-0 w-80 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
-                  <div className="h-48 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg mb-6 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <article className="flex-shrink-0 w-72 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
+                  <div className="h-40 bg-gradient-to-br from-yellow-500/20 to-red-500/20 rounded-lg mb-6 flex items-center justify-center">
+                    <svg className="w-10 h-10 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
                   <div className="space-y-3">
-                    <span className="text-xs font-medium text-purple-400 uppercase tracking-wide">SEO Strategy</span>
-                    <h3 className="text-xl font-semibold text-white group-hover:text-purple-300 transition-colors">
-                      5 SEO Automation Techniques That Save 10+ Hours Per Week
+                    <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-xs font-medium rounded-full border border-yellow-500/30">
+                      WordPress
+                    </span>
+                    <h3 className="text-lg font-semibold text-white group-hover:text-yellow-300 transition-colors">
+                      WordPress Plugin Stack for Client Sites
                     </h3>
                     <p className="text-gray-400 text-sm leading-relaxed">
-                      Discover how top agencies are using automation to scale their SEO operations while maintaining quality results...
+                      Essential plugins that every agency should install for optimal performance and security.
                     </p>
-                    <div className="flex items-center justify-between pt-4">
-                      <span className="text-xs text-gray-500">5 min read</span>
-                      <time className="text-xs text-gray-500">Dec 15, 2024</time>
-                    </div>
-                  </div>
-                </article>
-
-                {/* Blog Card 2 */}
-                <article className="flex-shrink-0 w-80 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
-                  <div className="h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg mb-6 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                    </svg>
-                  </div>
-                  <div className="space-y-3">
-                    <span className="text-xs font-medium text-blue-400 uppercase tracking-wide">Chrome Extensions</span>
-                    <h3 className="text-xl font-semibold text-white group-hover:text-blue-300 transition-colors">
-                      Must-Have Chrome Extensions for Digital Marketing Agencies
-                    </h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">
-                      A curated list of browser extensions that every digital marketing professional should have installed...
-                    </p>
-                    <div className="flex items-center justify-between pt-4">
-                      <span className="text-xs text-gray-500">3 min read</span>
-                      <time className="text-xs text-gray-500">Dec 12, 2024</time>
-                    </div>
-                  </div>
-                </article>
-
-                {/* Blog Card 3 */}
-                <article className="flex-shrink-0 w-80 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
-                  <div className="h-48 bg-gradient-to-br from-green-500/20 to-blue-500/20 rounded-lg mb-6 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </div>
-                  <div className="space-y-3">
-                    <span className="text-xs font-medium text-green-400 uppercase tracking-wide">Growth Hacks</span>
-                    <h3 className="text-xl font-semibold text-white group-hover:text-green-300 transition-colors">
-                      How We Scaled Our Agency to 100+ Clients Using These Tools
-                    </h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">
-                      The exact toolkit and processes we used to grow from 10 to 100 clients without burning out...
-                    </p>
-                    <div className="flex items-center justify-between pt-4">
-                      <span className="text-xs text-gray-500">8 min read</span>
+                    <div className="flex items-center justify-between pt-3">
+                      <span className="text-xs text-gray-500">7 min read</span>
                       <time className="text-xs text-gray-500">Dec 8, 2024</time>
                     </div>
                   </div>
                 </article>
 
-                {/* Blog Card 4 */}
-                <article className="flex-shrink-0 w-80 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
-                  <div className="h-48 bg-gradient-to-br from-yellow-500/20 to-red-500/20 rounded-lg mb-6 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                {/* Blog Card 2 */}
+                <article className="flex-shrink-0 w-72 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
+                  <div className="h-40 bg-gradient-to-br from-green-500/20 to-blue-500/20 rounded-lg mb-6 flex items-center justify-center">
+                    <svg className="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
                   <div className="space-y-3">
-                    <span className="text-xs font-medium text-yellow-400 uppercase tracking-wide">Productivity</span>
-                    <h3 className="text-xl font-semibold text-white group-hover:text-yellow-300 transition-colors">
-                      The Ultimate WordPress Plugin Stack for Client Sites
+                    <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full border border-green-500/30">
+                      Analytics
+                    </span>
+                    <h3 className="text-lg font-semibold text-white group-hover:text-green-300 transition-colors">
+                      Client Reporting That Actually Converts
                     </h3>
                     <p className="text-gray-400 text-sm leading-relaxed">
-                      Essential WordPress plugins that every agency should install on client websites for optimal performance...
+                      How to create reports that showcase value and help you retain clients longer.
                     </p>
-                    <div className="flex items-center justify-between pt-4">
+                    <div className="flex items-center justify-between pt-3">
                       <span className="text-xs text-gray-500">6 min read</span>
                       <time className="text-xs text-gray-500">Dec 5, 2024</time>
+                    </div>
+                  </div>
+                </article>
+
+                {/* Coming Soon Card */}
+                <article className="flex-shrink-0 w-72 bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-lg p-6 transition-all duration-300 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-blue-600/5"></div>
+                  <div className="relative h-40 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg mb-6 flex items-center justify-center">
+                    <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="relative space-y-3">
+                    <span className="px-3 py-1 bg-purple-500/20 text-purple-400 text-xs font-medium rounded-full border border-purple-500/30">
+                      Coming Soon
+                    </span>
+                    <h3 className="text-lg font-semibold text-white">
+                      Pricing Strategies That 10X Revenue
+                    </h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      The psychology behind premium pricing and how to position your agency for high-value clients.
+                    </p>
+                    <div className="flex items-center justify-between pt-3">
+                      <span className="text-xs text-purple-400">Next week</span>
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                        <span>In progress</span>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -1903,367 +2088,247 @@ export default function Home() {
 
       {/* Contact Us Section */}
       <section className="px-4 sm:px-6 py-16 sm:py-24 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-7xl mx-auto">
           {/* Section Header */}
-          <div className="mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">
-              Get in Touch
+          <div className="text-center mb-16 sm:mb-20">
+            <div className="inline-flex items-center px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full mb-6">
+              <svg className="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="text-blue-300 text-sm font-medium">Let's Connect</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+              Ready to 
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400"> Scale Your Agency?</span>
             </h2>
-            <div className="w-20 h-1 bg-gradient-to-r from-purple-500 to-blue-500 mx-auto rounded-full mb-6"></div>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
-              Have questions about our tools? Need a custom solution for your agency? 
-              We'd love to hear from you.
+            <p className="text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed">
+              Join 100+ agencies already using our tools to automate workflows and focus on growth. 
+              Whether you need support or want to discuss custom solutions, we're here to help.
             </p>
           </div>
 
-          {/* Contact Card */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-8 sm:p-12 backdrop-blur-sm hover:bg-white/8 hover:border-white/20 transition-all duration-300">
-            <div className="flex flex-col items-center space-y-6">
-              {/* Email Icon */}
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              
-              {/* Contact Info */}
-              <div className="space-y-4">
-                <h3 className="text-2xl font-semibold text-white">
-                  Drop us an email
-                </h3>
-                <p className="text-gray-400">
-                  Whether you have questions, feedback, or need support, we're here to help.
-                </p>
+          {/* Contact Cards Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+            {/* Primary Contact Card - Email */}
+            <div className="lg:col-span-2">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-8 sm:p-10 backdrop-blur-sm hover:bg-white/8 hover:border-white/20 transition-all duration-300 h-full relative overflow-hidden group">
+                {/* Background Decoration */}
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5"></div>
+                <div className="absolute top-6 right-6 w-12 h-12 bg-purple-500/10 rounded-full blur-xl"></div>
+                <div className="absolute bottom-6 left-6 w-16 h-16 bg-blue-500/10 rounded-full blur-2xl"></div>
                 
-                {/* Email Link */}
-                <a 
-                  href="mailto:seorockettools@gmail.com"
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <div className="relative">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-8">
+                    <div>
+                      <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                        Get Direct Support
+                      </h3>
+                      <p className="text-gray-400 text-lg">
+                        Questions about our tools? Technical support? We respond personally.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-full">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="text-green-300 text-sm font-medium">Online Now</span>
+                    </div>
+                  </div>
+
+                  {/* Contact Methods */}
+                  <div className="space-y-6">
+                    {/* Primary Email */}
+                    <div className="flex items-center justify-between p-6 bg-white/5 border border-white/10 rounded-xl hover:bg-white/8 transition-all duration-300">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                          <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-white font-semibold">seorockettools@gmail.com</div>
+                          <div className="text-sm text-gray-400">Primary support email</div>
+                        </div>
+                      </div>
+                      <a 
+                        href="mailto:seorockettools@gmail.com"
+                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105"
+                      >
+                        Send Email
+                      </a>
+                    </div>
+
+                    {/* Response Time Info */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-white/5 rounded-lg border border-white/10">
+                        <div className="text-2xl font-bold text-white mb-1">&lt; 4h</div>
+                        <div className="text-xs text-gray-400">Avg Response</div>
+                      </div>
+                      <div className="text-center p-4 bg-white/5 rounded-lg border border-white/10">
+                        <div className="text-2xl font-bold text-white mb-1">24/7</div>
+                        <div className="text-xs text-gray-400">Support Available</div>
+                      </div>
+                      <div className="text-center p-4 bg-white/5 rounded-lg border border-white/10">
+                        <div className="text-2xl font-bold text-white mb-1">100%</div>
+                        <div className="text-xs text-gray-400">Issues Resolved</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Contact Options */}
+            <div className="space-y-6">
+              {/* Custom Solutions Card */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
+                <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
-                  seorockettools@gmail.com
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2">Custom Development</h4>
+                <p className="text-gray-400 text-sm mb-4 leading-relaxed">
+                  Need a tool built specifically for your agency? Let's discuss your requirements.
+                </p>
+                <a 
+                  href="mailto:seorockettools@gmail.com?subject=Custom Development Inquiry"
+                  className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors inline-flex items-center gap-1"
+                >
+                  Start Project
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
                 </a>
               </div>
 
-              {/* Response Time */}
-              <div className="text-center pt-4">
-                <p className="text-sm text-gray-500">
-                  ⚡ Typical response time: Within 24 hours
+              {/* Partnership Card */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
+                <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2">Partnership Opportunities</h4>
+                <p className="text-gray-400 text-sm mb-4 leading-relaxed">
+                  Interested in white-label solutions or affiliate partnerships?
                 </p>
+                <a 
+                  href="mailto:seorockettools@gmail.com?subject=Partnership Inquiry"
+                  className="text-green-400 hover:text-green-300 text-sm font-medium transition-colors inline-flex items-center gap-1"
+                >
+                  Explore Partnership
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </a>
+              </div>
+
+              {/* Bug Report Card */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
+                <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2">Report Issues</h4>
+                <p className="text-gray-400 text-sm mb-4 leading-relaxed">
+                  Found a bug or have feedback? Help us improve our tools.
+                </p>
+                <a 
+                  href="mailto:seorockettools@gmail.com?subject=Bug Report"
+                  className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors inline-flex items-center gap-1"
+                >
+                  Report Issue
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </a>
               </div>
             </div>
           </div>
 
-          {/* Additional Info */}
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+          {/* Bottom Section - FAQ & Additional Info */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* FAQ Quick Access */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-white">Common Questions</h3>
               </div>
-              <h4 className="text-lg font-semibold text-white mb-2">Questions & Support</h4>
-              <p className="text-gray-400 text-sm">
-                Need help with any of our tools? We provide comprehensive support to get you up and running.
-              </p>
+              <div className="space-y-4">
+                <div className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-colors cursor-pointer">
+                  <div className="text-white font-medium mb-1">How quickly can you develop custom tools?</div>
+                  <div className="text-gray-400 text-sm">Most custom projects are completed within 2-4 weeks.</div>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-colors cursor-pointer">
+                  <div className="text-white font-medium mb-1">Do you offer white-label solutions?</div>
+                  <div className="text-gray-400 text-sm">Yes, we provide white-label versions for agency partners.</div>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-colors cursor-pointer">
+                  <div className="text-white font-medium mb-1">What's included in your support?</div>
+                  <div className="text-gray-400 text-sm">Installation help, troubleshooting, and feature guidance.</div>
+                </div>
+              </div>
             </div>
 
-            <div className="text-center">
-              <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
+            {/* Contact Stats & Trust Signals */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-white">Why Agencies Trust Us</h3>
               </div>
-              <h4 className="text-lg font-semibold text-white mb-2">Custom Solutions</h4>
-              <p className="text-gray-400 text-sm">
-                Looking for a custom tool for your agency? Let's discuss how we can build something specific for your needs.
-              </p>
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-white font-medium mb-1">Built by Agency Owners</div>
+                    <div className="text-gray-400 text-sm">We understand your challenges because we've lived them.</div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-white font-medium mb-1">Lightning Fast Support</div>
+                    <div className="text-gray-400 text-sm">No outsourced support. Direct access to our development team.</div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-white font-medium mb-1">Continuous Innovation</div>
+                    <div className="text-gray-400 text-sm">Regular updates based on real agency feedback and requests.</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
-
-      {/* Tag Manager Modal */}
-      {stableIsAdmin && showTagManager && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">Tag Manager</h2>
-                <button
-                  onClick={() => setShowTagManager(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Add New Tag */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">Add New Tag</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newTagName}
-                    onChange={(e) => setNewTagName(e.target.value)}
-                    placeholder="Tag name"
-                    className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleAddTag()
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={handleAddTag}
-                    disabled={!newTagName.trim()}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-
-              {/* Existing Tags */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">Existing Tags</label>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {availableTags.map((tag) => (
-                    <div key={tag.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-                      <span className="text-white">{tag.name}</span>
-                      <button
-                        onClick={() => handleRemoveTag(tag.id)}
-                        disabled={deletingTagId === tag.id}
-                        className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                      >
-                        {deletingTagId === tag.id ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
-                            <span className="text-xs">Deleting...</span>
-                          </>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add/Edit Product Modal */}
-      {stableIsAdmin && (showAddProduct || showEditProduct) && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">
-                  {showAddProduct ? 'Add New Product' : 'Edit Product'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowAddProduct(false)
-                    setShowEditProduct(null)
-                    resetProductForm()
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <form className="space-y-4" onSubmit={(e) => {
-                e.preventDefault()
-                if (showEditProduct) {
-                  handleEditProduct(showEditProduct)
-                } else {
-                  handleAddProduct()
-                }
-              }}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Software Name *</label>
-                    <input
-                      type="text"
-                      value={productForm.software_name}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, software_name: e.target.value }))}
-                      required
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Emoji</label>
-                    <input
-                      type="text"
-                      value={productForm.emoji}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, emoji: e.target.value }))}
-                      placeholder="🚀"
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                  <textarea
-                    value={productForm.description}
-                    onChange={(e) => setProductForm(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">URL</label>
-                    <input
-                      type="url"
-                      value={productForm.url}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, url: e.target.value }))}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Slug</label>
-                    <input
-                      type="text"
-                      value={productForm.slug}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, slug: e.target.value }))}
-                      placeholder="auto-generated from name"
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Tag Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Tags</label>
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2 p-3 bg-gray-800 border border-gray-700 rounded-lg min-h-[44px]">
-                      {productForm.tags.length === 0 ? (
-                        <span className="text-gray-500 text-sm">No tags selected</span>
-                      ) : (
-                        productForm.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                          >
-                            {tag}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setProductForm(prev => ({
-                                  ...prev,
-                                  tags: prev.tags.filter((_, i) => i !== index)
-                                }))
-                              }}
-                              className="ml-1 text-blue-300 hover:text-blue-100"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                      {availableTags
-                        .filter(tag => !productForm.tags.includes(tag.name))
-                        .map((tag) => (
-                          <button
-                            key={tag.id}
-                            type="button"
-                            onClick={() => {
-                              setProductForm(prev => ({
-                                ...prev,
-                                tags: [...prev.tags, tag.name]
-                              }))
-                            }}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-700/60 hover:bg-gray-600 text-gray-300 border border-gray-600 transition-colors"
-                          >
-                            {tag.name}
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={productForm.published}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, published: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-300">Published</span>
-                  </label>
-
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={productForm.featured}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, featured: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-300">Featured</span>
-                  </label>
-
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={productForm.free}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, free: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-300">Free</span>
-                  </label>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddProduct(false)
-                      setShowEditProduct(null)
-                      resetProductForm()
-                    }}
-                    disabled={editProductLoading || addProductLoading}
-                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={editProductLoading || addProductLoading}
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    {(editProductLoading || addProductLoading) && (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    )}
-                    {showAddProduct 
-                      ? (addProductLoading ? 'Adding Product...' : 'Add Product')
-                      : (editProductLoading ? 'Updating Product...' : 'Update Product')
-                    }
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Success Notification */}
       {orderSaveSuccess && (
