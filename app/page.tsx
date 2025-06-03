@@ -1641,6 +1641,350 @@ export default function Home() {
         </div>
       </section>
 
+      {/* About Us Section */}
+      <section className="px-4 sm:px-6 py-16 sm:py-24 relative z-10">
+        <div className="max-w-7xl mx-auto">
+          {/* Main Content - Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-20">
+            {/* Left Column - Text Content */}
+            <div className="space-y-8">
+              <div className="space-y-6">
+                <div className="inline-flex items-center px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-full">
+                  <svg className="w-5 h-5 text-purple-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span className="text-purple-300 text-sm font-medium">Born from Frustration 😅</span>
+                </div>
+                
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight">
+                  We understand your
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400"> daily challenges</span>
+                </h2>
+                
+                <p className="text-lg text-gray-300 leading-relaxed">
+                  We're a team of digital marketing experts and developers who understand the daily challenges faced by 
+                  <span className="text-white font-semibold"> agencies</span> and 
+                  <span className="text-white font-semibold"> virtual assistants</span> in today's fast-paced digital landscape.
+                </p>
+                
+                <p className="text-gray-400 leading-relaxed">
+                  Born from real-world experience managing hundreds of client campaigns, SEO Rocket was created to solve the repetitive, 
+                  time-consuming tasks that keep you from focusing on what matters most, delivering exceptional results for your clients.
+                </p>
+              </div>
+
+              {/* Stats Row */}
+              <div className="grid grid-cols-3 gap-6 pt-8 border-t border-white/10">
+                <div className="text-center">
+                  <div className="text-2xl sm:text-3xl font-bold text-white mb-1">100+</div>
+                  <div className="text-sm text-gray-400">Agencies Served</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl sm:text-3xl font-bold text-white mb-1">50k+</div>
+                  <div className="text-sm text-gray-400">Hours Saved</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl sm:text-3xl font-bold text-white mb-1">99%</div>
+                  <div className="text-sm text-gray-400">Client Satisfaction</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Visual Elements */}
+            <div className="relative">
+              {/* Background Glow */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-3xl blur-3xl"></div>
+              
+              {/* Main Card */}
+              <div className="relative bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+                {/* Top Section - Team Avatar Placeholder */}
+                <div className="flex items-center justify-center mb-8">
+                  <div className="relative">
+                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                      <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feature Grid */}
+                <div className="space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                      <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-1">Built for Speed</h4>
+                      <p className="text-sm text-gray-400">Cut workflow time in half with tools designed for efficiency</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-1">Agency Tested</h4>
+                      <p className="text-sm text-gray-400">Used daily by agencies managing 50+ clients</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-1">Always Evolving</h4>
+                      <p className="text-sm text-gray-400">Continuous updates based on user feedback</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom CTA */}
+                <div className="mt-8 pt-6 border-t border-white/10 text-center">
+                  <p className="text-sm text-gray-400 mb-3">Trusted by marketing professionals worldwide</p>
+                  <div className="flex justify-center space-x-1">
+                    {[...Array(5)].map((_, i) => (
+                      <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">5.0 rating from our users</p>
+                </div>
+              </div>
+
+              {/* Floating Elements */}
+              <div className="absolute -top-4 -right-4 w-8 h-8 bg-purple-500/30 rounded-full blur-sm"></div>
+              <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-blue-500/20 rounded-full blur-lg"></div>
+            </div>
+          </div>
+
+          {/* Bottom Quote Section */}
+          <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-white/10 rounded-2xl p-8 sm:p-12 text-center backdrop-blur-sm">
+            <svg className="w-12 h-12 text-purple-400 mx-auto mb-6 opacity-50" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v10h-10z"/>
+            </svg>
+            <blockquote className="text-xl sm:text-2xl font-medium text-white mb-4 italic">
+              "We built the tools we wished existed when we were drowning in repetitive tasks"
+            </blockquote>
+            <p className="text-gray-400">— The SEO Rocket Team</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Recent Posts/Blogs Section */}
+      <section className="px-4 sm:px-6 py-16 sm:py-24 relative z-10">
+        <div className="max-w-7xl mx-auto">
+          {/* Section Header */}
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">
+              Latest Insights
+            </h2>
+            <div className="w-20 h-1 bg-gradient-to-r from-purple-500 to-blue-500 mx-auto rounded-full mb-4"></div>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              Stay ahead with actionable tips, industry updates, and strategies from our team
+            </p>
+          </div>
+
+          {/* Horizontal Scrollable Blog Cards */}
+          <div className="relative">
+            {/* Gradient Overlays */}
+            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-black via-black/80 to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-black via-black/80 to-transparent z-10 pointer-events-none" />
+            
+            {/* Scrollable Container */}
+            <div className="overflow-x-auto scrollbar-hide pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="flex gap-6 px-8" style={{ width: 'fit-content' }}>
+                {/* Blog Card 1 */}
+                <article className="flex-shrink-0 w-80 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
+                  <div className="h-48 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg mb-6 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <div className="space-y-3">
+                    <span className="text-xs font-medium text-purple-400 uppercase tracking-wide">SEO Strategy</span>
+                    <h3 className="text-xl font-semibold text-white group-hover:text-purple-300 transition-colors">
+                      5 SEO Automation Techniques That Save 10+ Hours Per Week
+                    </h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      Discover how top agencies are using automation to scale their SEO operations while maintaining quality results...
+                    </p>
+                    <div className="flex items-center justify-between pt-4">
+                      <span className="text-xs text-gray-500">5 min read</span>
+                      <time className="text-xs text-gray-500">Dec 15, 2024</time>
+                    </div>
+                  </div>
+                </article>
+
+                {/* Blog Card 2 */}
+                <article className="flex-shrink-0 w-80 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
+                  <div className="h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg mb-6 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                    </svg>
+                  </div>
+                  <div className="space-y-3">
+                    <span className="text-xs font-medium text-blue-400 uppercase tracking-wide">Chrome Extensions</span>
+                    <h3 className="text-xl font-semibold text-white group-hover:text-blue-300 transition-colors">
+                      Must-Have Chrome Extensions for Digital Marketing Agencies
+                    </h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      A curated list of browser extensions that every digital marketing professional should have installed...
+                    </p>
+                    <div className="flex items-center justify-between pt-4">
+                      <span className="text-xs text-gray-500">3 min read</span>
+                      <time className="text-xs text-gray-500">Dec 12, 2024</time>
+                    </div>
+                  </div>
+                </article>
+
+                {/* Blog Card 3 */}
+                <article className="flex-shrink-0 w-80 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
+                  <div className="h-48 bg-gradient-to-br from-green-500/20 to-blue-500/20 rounded-lg mb-6 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <div className="space-y-3">
+                    <span className="text-xs font-medium text-green-400 uppercase tracking-wide">Growth Hacks</span>
+                    <h3 className="text-xl font-semibold text-white group-hover:text-green-300 transition-colors">
+                      How We Scaled Our Agency to 100+ Clients Using These Tools
+                    </h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      The exact toolkit and processes we used to grow from 10 to 100 clients without burning out...
+                    </p>
+                    <div className="flex items-center justify-between pt-4">
+                      <span className="text-xs text-gray-500">8 min read</span>
+                      <time className="text-xs text-gray-500">Dec 8, 2024</time>
+                    </div>
+                  </div>
+                </article>
+
+                {/* Blog Card 4 */}
+                <article className="flex-shrink-0 w-80 bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/8 hover:border-white/20 transition-all duration-300 group">
+                  <div className="h-48 bg-gradient-to-br from-yellow-500/20 to-red-500/20 rounded-lg mb-6 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div className="space-y-3">
+                    <span className="text-xs font-medium text-yellow-400 uppercase tracking-wide">Productivity</span>
+                    <h3 className="text-xl font-semibold text-white group-hover:text-yellow-300 transition-colors">
+                      The Ultimate WordPress Plugin Stack for Client Sites
+                    </h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      Essential WordPress plugins that every agency should install on client websites for optimal performance...
+                    </p>
+                    <div className="flex items-center justify-between pt-4">
+                      <span className="text-xs text-gray-500">6 min read</span>
+                      <time className="text-xs text-gray-500">Dec 5, 2024</time>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Us Section */}
+      <section className="px-4 sm:px-6 py-16 sm:py-24 relative z-10">
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Section Header */}
+          <div className="mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">
+              Get in Touch
+            </h2>
+            <div className="w-20 h-1 bg-gradient-to-r from-purple-500 to-blue-500 mx-auto rounded-full mb-6"></div>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
+              Have questions about our tools? Need a custom solution for your agency? 
+              We'd love to hear from you.
+            </p>
+          </div>
+
+          {/* Contact Card */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-8 sm:p-12 backdrop-blur-sm hover:bg-white/8 hover:border-white/20 transition-all duration-300">
+            <div className="flex flex-col items-center space-y-6">
+              {/* Email Icon */}
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              
+              {/* Contact Info */}
+              <div className="space-y-4">
+                <h3 className="text-2xl font-semibold text-white">
+                  Drop us an email
+                </h3>
+                <p className="text-gray-400">
+                  Whether you have questions, feedback, or need support, we're here to help.
+                </p>
+                
+                {/* Email Link */}
+                <a 
+                  href="mailto:seorockettools@gmail.com"
+                  className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  seorockettools@gmail.com
+                </a>
+              </div>
+
+              {/* Response Time */}
+              <div className="text-center pt-4">
+                <p className="text-sm text-gray-500">
+                  ⚡ Typical response time: Within 24 hours
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Info */}
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-white mb-2">Questions & Support</h4>
+              <p className="text-gray-400 text-sm">
+                Need help with any of our tools? We provide comprehensive support to get you up and running.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-white mb-2">Custom Solutions</h4>
+              <p className="text-gray-400 text-sm">
+                Looking for a custom tool for your agency? Let's discuss how we can build something specific for your needs.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Tag Manager Modal */}
       {stableIsAdmin && showTagManager && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
