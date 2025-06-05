@@ -146,8 +146,11 @@ function LoginForm() {
 }
 
 function AdminDashboard({ user }: { user: any }) {
+  const router = useRouter()
+  
   const handleLogout = async () => {
     await signOut()
+    router.push('/')
   }
 
   return (
