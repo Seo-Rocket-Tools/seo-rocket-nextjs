@@ -8,8 +8,8 @@ import {
   getSoftwareByTag, 
   getFeaturedSoftware,
   getAvailableTags
-} from '../data/software-loader'
-import { useRealtime } from '../lib/useRealtime'
+} from '../../data/software-loader'
+import { useRealtime } from '../../lib/useRealtime'
 import Link from 'next/link'
 
 export default function Home() {

@@ -56,7 +56,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean, s
     <div className={`${isCollapsed ? 'w-16' : 'w-64'} bg-gray-900/50 backdrop-blur-sm border-r border-gray-800 transition-all duration-300 flex flex-col`}>
       {/* Sidebar Header */}
       <div className="p-4 border-b border-gray-800">
-        <div className="flex items-center justify-between">
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed && (
             <h2 className="text-lg font-semibold text-white">Admin Panel</h2>
           )}
@@ -78,14 +78,14 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean, s
             {/* Parent Item */}
             <Link
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`flex items-center ${isCollapsed ? 'justify-center w-10 h-10' : 'gap-3 px-3 py-2'} rounded-lg text-sm transition-colors ${
                 isParentActive(item.href, item.children)
                   ? 'bg-blue-600 text-white' 
                   : 'text-gray-300 hover:text-white hover:bg-gray-800'
               }`}
               title={isCollapsed ? item.name : undefined}
             >
-              <span className="text-lg">{item.icon}</span>
+              <span className={`${isCollapsed ? 'text-xl' : 'text-lg'}`}>{item.icon}</span>
               {!isCollapsed && <span className="font-medium">{item.name}</span>}
             </Link>
 
@@ -103,9 +103,6 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean, s
                     }`}
                   >
                     {child.name}
-                    {child.isDefault && (
-                      <span className="ml-2 text-xs text-gray-500">(Default)</span>
-                    )}
                   </Link>
                 ))}
               </div>
