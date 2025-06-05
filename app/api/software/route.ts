@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
           software_name: item.name,
           slug: item.id,
           description: item.description,
-          emoji: item.icon,
+          icon_url: item.icon,
           url: item.url,
           tags: item.tags.join(', '),
           published: item.status === 'active',

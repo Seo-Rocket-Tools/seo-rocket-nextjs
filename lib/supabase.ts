@@ -19,13 +19,13 @@ export interface Product {
   software_name: string
   slug: string
   description: string
-  emoji: string
   url: string
   tags: string[] | string // Keep for backward compatibility during migration
   published: boolean
   featured: boolean
   free: boolean
   image_url: string
+  icon_url: string
   created_at: string
   priority: number
   featured_order: number
@@ -581,4 +581,323 @@ export async function getProductTagsByTag(tagId: string): Promise<ProductTag[]> 
   }
 
   return data || []
+}
+
+export async function updateProduct(productId: string, updates: Partial<{
+  software_name: string
+  slug: string
+  description: string
+  url: string
+  published: boolean
+  featured: boolean
+  free: boolean
+  icon_url: string
+}>): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  try {
+    const { error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', productId)
+
+    if (error) {
+      console.error('Error updating product:', error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in updateProduct:', error)
+    return false
+  }
+}
+
+export async function createTag(name: string): Promise<Tag | null> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from('tags')
+    .insert({ name })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating tag:', error)
+    return null
+  }
+
+  return data
+}
+
+export async function deleteProduct(productId: string): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  try {
+    // First delete all product-tag relationships
+    const { error: tagError } = await supabase
+      .from('product_tags')
+      .delete()
+      .eq('product_id', productId)
+
+    if (tagError) {
+      console.error('Error deleting product tags:', tagError)
+      return false
+    }
+
+    // Then delete the product
+    const { error: productError } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId)
+
+    if (productError) {
+      console.error('Error deleting product:', productError)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in deleteProduct:', error)
+    return false
+  }
+}
+
+export async function createProduct(productData: {
+  software_name: string
+  slug: string
+  description: string
+  url: string
+  published: boolean
+  featured: boolean
+  free: boolean
+  icon_url?: string
+}): Promise<string | null> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return null
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .insert([productData])
+      .select('id')
+      .single()
+
+    if (error) {
+      console.error('Error creating product:', error)
+      return null
+    }
+
+    return data.id
+  } catch (error) {
+    console.error('Error in createProduct:', error)
+    return null
+  }
+}
+
+export async function uploadProductIcon(file: File, productId: string): Promise<string | null> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return null
+  }
+
+  try {
+    // Create a unique filename
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${productId}-${Date.now()}.${fileExt}`
+    const filePath = `icons/${fileName}`
+
+    // Upload file to storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('product-icons')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      })
+
+    if (uploadError) {
+      console.error('Error uploading icon:', uploadError)
+      return null
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('product-icons')
+      .getPublicUrl(filePath)
+
+    return urlData.publicUrl
+  } catch (error) {
+    console.error('Error in uploadProductIcon:', error)
+    return null
+  }
+}
+
+export async function deleteProductIcon(iconUrl: string): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  try {
+    // Extract file path from URL
+    const url = new URL(iconUrl)
+    const pathSegments = url.pathname.split('/')
+    const filePath = pathSegments.slice(-2).join('/') // Get 'icons/filename.ext'
+
+    const { error } = await supabase.storage
+      .from('product-icons')
+      .remove([filePath])
+
+    if (error) {
+      console.error('Error deleting icon:', error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in deleteProductIcon:', error)
+    return false
+  }
+}
+
+// Helper function to resize image to 200x200
+export function resizeImage(file: File, maxWidth: number = 200, maxHeight: number = 200): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+
+    img.onload = () => {
+      // Set canvas size to desired dimensions
+      canvas.width = maxWidth
+      canvas.height = maxHeight
+
+      // Calculate scaling to maintain aspect ratio and fill the square
+      const scale = Math.max(maxWidth / img.width, maxHeight / img.height)
+      const scaledWidth = img.width * scale
+      const scaledHeight = img.height * scale
+
+      // Center the image
+      const x = (maxWidth - scaledWidth) / 2
+      const y = (maxHeight - scaledHeight) / 2
+
+      // Draw scaled image (no background fill to preserve transparency)
+      if (ctx) {
+        ctx.drawImage(img, x, y, scaledWidth, scaledHeight)
+      }
+
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const resizedFile = new File([blob], file.name, {
+            type: 'image/png',
+            lastModified: Date.now()
+          })
+          resolve(resizedFile)
+        } else {
+          reject(new Error('Failed to create blob'))
+        }
+      }, 'image/png', 0.9)
+    }
+
+    img.onerror = () => reject(new Error('Failed to load image'))
+    
+    // Create object URL and load image
+    const objectUrl = URL.createObjectURL(file)
+    img.src = objectUrl
+  })
+}
+
+// Helper function to check if image needs cropping and get dimensions
+export function getImageInfo(file: File): Promise<{
+  width: number
+  height: number
+  isSquare: boolean
+  aspectRatio: number
+}> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    
+    img.onload = () => {
+      const width = img.width
+      const height = img.height
+      const isSquare = Math.abs(width - height) < 5 // Allow 5px tolerance
+      const aspectRatio = width / height
+      
+      resolve({
+        width,
+        height,
+        isSquare,
+        aspectRatio
+      })
+      
+      URL.revokeObjectURL(img.src)
+    }
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src)
+      reject(new Error('Failed to load image'))
+    }
+    
+    const objectUrl = URL.createObjectURL(file)
+    img.src = objectUrl
+  })
+}
+
+// Helper function to crop image based on crop coordinates
+export function cropImage(
+  file: File, 
+  cropData: { x: number; y: number; width: number; height: number },
+  maxWidth: number = 200,
+  maxHeight: number = 200
+): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+
+    img.onload = () => {
+      // Set canvas size to desired output dimensions
+      canvas.width = maxWidth
+      canvas.height = maxHeight
+
+      if (ctx) {
+        // Draw the cropped portion of the image, scaled to fill the canvas
+        ctx.drawImage(
+          img,
+          cropData.x, cropData.y, cropData.width, cropData.height, // Source rectangle
+          0, 0, maxWidth, maxHeight // Destination rectangle
+        )
+      }
+
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const croppedFile = new File([blob], file.name, {
+            type: 'image/png',
+            lastModified: Date.now()
+          })
+          resolve(croppedFile)
+        } else {
+          reject(new Error('Failed to create blob'))
+        }
+      }, 'image/png', 0.9)
+    }
+
+    img.onerror = () => reject(new Error('Failed to load image'))
+    
+    const objectUrl = URL.createObjectURL(file)
+    img.src = objectUrl
+  })
 } 

@@ -55,7 +55,7 @@ function convertProductToSoftwareItem(product: Product): SoftwareItem {
   const result = {
     id: product.slug,
     name: product.software_name,
-    icon: product.emoji,
+    icon: product.icon_url || '📦',
     description: product.description,
     tags: tagsArray,
     status: (product.published ? 'active' : 'coming-soon') as 'active' | 'beta' | 'coming-soon' | 'deprecated',
@@ -88,7 +88,7 @@ function convertProductWithTagsToSoftwareItem(product: ProductWithTags): Softwar
   return {
     id: product.slug,
     name: product.software_name,
-    icon: product.emoji,
+    icon: product.icon_url || '📦',
     description: product.description,
     tags: tagsArray,
     status: product.published ? 'active' : 'coming-soon',

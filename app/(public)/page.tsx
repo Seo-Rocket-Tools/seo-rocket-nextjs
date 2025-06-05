@@ -468,7 +468,15 @@ export default function Home() {
                   >
                     {/* Icon */}
                     <div className="text-3xl sm:text-4xl mb-3 sm:mb-4 transition-all duration-300">
-                      {tool.icon}
+                      {tool.icon && tool.icon.startsWith('http') ? (
+                        <img 
+                          src={tool.icon} 
+                          alt={tool.name} 
+                          className="w-9 h-9 sm:w-10 sm:h-10 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <span>{tool.icon || '📦'}</span>
+                      )}
                     </div>
                     
                     {/* Software Name */}
