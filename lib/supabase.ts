@@ -620,15 +620,41 @@ export async function updateProduct(productId: string, updates: Partial<{
   }
 }
 
-export async function createTag(name: string): Promise<Tag | null> {
+export async function createTag(tagData: {
+  name: string
+  slug?: string
+  description?: string
+  color?: string
+}): Promise<Tag | null> {
   if (!supabase) {
     console.warn('Supabase not configured')
     return null
   }
 
+  // Generate slug if not provided
+  if (!tagData.slug) {
+    tagData.slug = tagData.name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+  }
+
+  // Get next order_index (should be the length of existing tags)
+  const { count } = await supabase
+    .from('tags')
+    .select('*', { count: 'exact', head: true })
+
+  const orderIndex = count ?? 0
+
   const { data, error } = await supabase
     .from('tags')
-    .insert({ name })
+    .insert({ 
+      ...tagData,
+      order_index: orderIndex
+    })
     .select()
     .single()
 
@@ -697,6 +723,81 @@ export async function reorderTags(tagIds: string[]): Promise<boolean> {
     return true
   } catch (error) {
     console.error('Error in reorderTags:', error)
+    return false
+  }
+}
+
+export async function deleteTag(tagId: string): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  try {
+    // First, get the order_index of the tag being deleted
+    const { data: tagToDelete, error: fetchError } = await supabase
+      .from('tags')
+      .select('order_index')
+      .eq('id', tagId)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching tag to delete:', fetchError)
+      return false
+    }
+
+    // Delete all product-tag relationships for this tag
+    const { error: relationError } = await supabase
+      .from('product_tags')
+      .delete()
+      .eq('tag_id', tagId)
+
+    if (relationError) {
+      console.error('Error deleting product-tag relationships:', relationError)
+      return false
+    }
+
+    // Delete the tag itself
+    const { error: deleteError } = await supabase
+      .from('tags')
+      .delete()
+      .eq('id', tagId)
+
+    if (deleteError) {
+      console.error('Error deleting tag:', deleteError)
+      return false
+    }
+
+    // Update order_index for all tags that come after the deleted tag
+    // Decrement their order_index by 1 to fill the gap
+    const { data: tagsToUpdate } = await supabase
+      .from('tags')
+      .select('id, order_index')
+      .gt('order_index', tagToDelete.order_index)
+
+    if (tagsToUpdate && tagsToUpdate.length > 0) {
+      const updatePromises = tagsToUpdate.map(tag => 
+        supabase
+          .from('tags')
+          .update({ order_index: tag.order_index - 1 })
+          .eq('id', tag.id)
+      )
+
+      const updateResults = await Promise.all(updatePromises)
+      
+      for (const result of updateResults) {
+        if (result.error) {
+          console.error('Error updating order index:', result.error)
+          return false
+        }
+      }
+    }
+
+
+
+    return true
+  } catch (error) {
+    console.error('Error in deleteTag:', error)
     return false
   }
 }

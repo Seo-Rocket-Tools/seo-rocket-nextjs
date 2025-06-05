@@ -351,7 +351,7 @@ export default function ProductsManagerPage() {
     }
     
     // Create new tag
-    const newTag = await createTag(tagSearchTerm.trim())
+    const newTag = await createTag({ name: tagSearchTerm.trim() })
     if (newTag) {
       setAllTags(prev => [...prev, newTag])
       setCurrentProductTags(prev => [...prev, newTag])
@@ -1645,7 +1645,7 @@ export default function ProductsManagerPage() {
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  const newTag = await createTag(tagSearchTerm.trim())
+                                  const newTag = await createTag({ name: tagSearchTerm.trim() })
                                   if (newTag) {
                                     setAllTags(prev => [...prev, newTag])
                                     handleAddTag(newTag)
@@ -2180,7 +2180,7 @@ export default function ProductsManagerPage() {
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  const newTag = await createTag(tagSearchTerm.trim())
+                                  const newTag = await createTag({ name: tagSearchTerm.trim() })
                                   if (newTag) {
                                     setAllTags(prev => [...prev, newTag])
                                     handleAddFormTagAdd(newTag)

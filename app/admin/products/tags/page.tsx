@@ -20,7 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { getAllTags, getAllProductsWithTags, createTag, updateTag, reorderTags, Tag, ProductWithTags } from '@/lib/supabase'
+import { getAllTags, getAllProductsWithTags, createTag, updateTag, deleteTag, reorderTags, Tag, ProductWithTags } from '@/lib/supabase'
 
 interface TagWithStats extends Tag {
   productCount: number
@@ -33,6 +33,8 @@ function SortableTagItem({
   openDropdown, 
   setOpenDropdown, 
   handleEditTag,
+  handleDeleteTag,
+  deleting,
   getColorClasses,
   getTagColor,
   formatDate 
@@ -41,6 +43,8 @@ function SortableTagItem({
   openDropdown: string | null
   setOpenDropdown: (id: string | null) => void
   handleEditTag: (tag: TagWithStats) => void
+  handleDeleteTag: (tag: TagWithStats) => void
+  deleting: string | null
   getColorClasses: (color: string) => { bg: string; text: string }
   getTagColor: (tag: TagWithStats) => string
   formatDate: (dateString: string) => string
@@ -128,11 +132,19 @@ function SortableTagItem({
                   Edit Tag
                 </button>
                 
-                <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-gray-700 flex items-center gap-3">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Delete Tag
+                <button 
+                  onClick={() => handleDeleteTag(tag)}
+                  disabled={deleting === tag.id}
+                  className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-gray-700 flex items-center gap-3 disabled:opacity-50"
+                >
+                  {deleting === tag.id ? (
+                    <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  )}
+                  {deleting === tag.id ? 'Deleting...' : 'Delete Tag'}
                 </button>
               </div>
             )}
@@ -148,7 +160,12 @@ export default function ProductTagsPage() {
   const [products, setProducts] = useState<ProductWithTags[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [newTagName, setNewTagName] = useState('')
+  const [addFormData, setAddFormData] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    color: ''
+  })
   const [creating, setCreating] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingTag, setEditingTag] = useState<TagWithStats | null>(null)
@@ -159,6 +176,9 @@ export default function ProductTagsPage() {
     color: ''
   })
   const [updating, setUpdating] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [tagToDelete, setTagToDelete] = useState<TagWithStats | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -242,12 +262,27 @@ export default function ProductTagsPage() {
     }
   }
 
+  const handleAddInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setAddFormData(prev => ({
+      ...prev,
+      [name]: value,
+      // Auto-generate slug when name changes
+      ...(name === 'name' ? { slug: generateSlug(value) } : {})
+    }))
+  }
+
   const handleCreateTag = async () => {
-    if (!newTagName.trim()) return
+    if (!addFormData.name.trim()) return
     
     try {
       setCreating(true)
-      const newTag = await createTag(newTagName.trim())
+      const newTag = await createTag({
+        name: addFormData.name.trim(),
+        slug: addFormData.slug.trim(),
+        description: addFormData.description.trim() || undefined,
+        color: addFormData.color || undefined
+      })
       
       if (newTag) {
         // Add to local state
@@ -262,7 +297,7 @@ export default function ProductTagsPage() {
           totalTags: prev.totalTags + 1
         }))
         
-        setNewTagName('')
+        setAddFormData({ name: '', slug: '', description: '', color: '' })
         setShowAddModal(false)
       }
     } catch (error) {
@@ -350,6 +385,64 @@ export default function ProductTagsPage() {
     } finally {
       setUpdating(false)
     }
+  }
+
+  const handleDeleteTag = (tag: TagWithStats) => {
+    setTagToDelete(tag)
+    setDeleteConfirmText('')
+    setOpenDropdown(null)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!tagToDelete || deleteConfirmText !== tagToDelete.name) {
+      return
+    }
+
+    try {
+      setDeleting(tagToDelete.id)
+      const success = await deleteTag(tagToDelete.id)
+      
+      if (success) {
+        // Remove tag from local state
+        setTags(prev => prev.filter(tag => tag.id !== tagToDelete.id))
+        
+        // Remove the tag from all products that have it
+        setProducts(prev => prev.map(product => ({
+          ...product,
+          product_tags: product.product_tags?.filter(pt => pt.tag_id !== tagToDelete.id) || []
+        })))
+        
+        // Update stats - recalculate tagged products count
+        const updatedProducts = products.map(product => ({
+          ...product,
+          product_tags: product.product_tags?.filter(pt => pt.tag_id !== tagToDelete.id) || []
+        }))
+        
+        const taggedProductsCount = updatedProducts.filter(product => 
+          product.product_tags && product.product_tags.length > 0
+        ).length
+        
+        setStats(prev => ({
+          ...prev,
+          totalTags: prev.totalTags - 1,
+          taggedProducts: taggedProductsCount,
+          avgProductsPerTag: prev.totalTags > 1 ? Math.round(taggedProductsCount / (prev.totalTags - 1) * 10) / 10 : 0
+        }))
+        
+        setTagToDelete(null)
+        setDeleteConfirmText('')
+      }
+    } catch (error) {
+      console.error('Error deleting tag:', error)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setTagToDelete(null)
+    setDeleteConfirmText('')
+    setDeleting(null)
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -513,12 +606,97 @@ export default function ProductTagsPage() {
           </p>
         </div>
 
+        {/* System Tags Section */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3 px-6 pt-4">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+            </svg>
+            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">System Tags</h3>
+          </div>
+          <div className="divide-y divide-gray-800">
+            {[
+              { name: 'Featured', color: '#F59E0B', description: 'Showcase premium products' },
+              { name: 'Free', color: '#22C55E', description: 'Free products and tools' },
+              { name: 'All', color: '#3B82F6', description: 'All published products' }
+            ].map((systemTag) => (
+              <div key={systemTag.name} className="p-6 bg-gray-900/30 border-l-4 border-amber-500/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {/* System Tag Indicator */}
+                    <div className="w-12 h-12 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-lg flex items-center justify-center border border-amber-500/30">
+                      <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-lg font-semibold text-white">{systemTag.name}</h3>
+                        <span className="px-2 py-1 text-xs font-medium bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
+                          SYSTEM
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-400 mt-1">{systemTag.description}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    {/* Product count badge - calculate dynamically */}
+                    <div className="px-3 py-1 bg-gray-600/20 text-gray-400 rounded-full text-sm font-medium">
+                      {(() => {
+                        if (systemTag.name === 'Featured') {
+                          return products.filter(p => p.featured && p.published).length
+                        } else if (systemTag.name === 'Free') {
+                          return products.filter(p => p.free && p.published).length
+                        } else if (systemTag.name === 'All') {
+                          return products.filter(p => p.published).length
+                        }
+                        return 0
+                      })()} {(() => {
+                        const count = (() => {
+                          if (systemTag.name === 'Featured') {
+                            return products.filter(p => p.featured && p.published).length
+                          } else if (systemTag.name === 'Free') {
+                            return products.filter(p => p.free && p.published).length
+                          } else if (systemTag.name === 'All') {
+                            return products.filter(p => p.published).length
+                          }
+                          return 0
+                        })()
+                        return count === 1 ? 'Product' : 'Products'
+                      })()}
+                    </div>
+                    
+                    {/* Locked indicator */}
+                    <div className="p-2 text-gray-500 cursor-not-allowed" title="System tags cannot be modified">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom Tags Section */}
+        <div className="mb-3 px-6">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">Custom Tags</h3>
+          </div>
+        </div>
+
         {tags.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🏷️</div>
-            <h3 className="text-xl font-semibold text-white mb-2">No Tags Yet</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">No Custom Tags Yet</h3>
             <p className="text-gray-400 max-w-md mx-auto mb-6">
-              Create your first tag to start organizing your products. 
+              Create your first custom tag to start organizing your products. 
               Tags help users find related products more easily.
             </p>
             <button 
@@ -543,6 +721,8 @@ export default function ProductTagsPage() {
                     openDropdown={openDropdown}
                     setOpenDropdown={setOpenDropdown}
                     handleEditTag={handleEditTag}
+                    handleDeleteTag={handleDeleteTag}
+                    deleting={deleting}
                     getColorClasses={getColorClasses}
                     getTagColor={getTagColor}
                     formatDate={formatDate}
@@ -557,13 +737,13 @@ export default function ProductTagsPage() {
       {/* Add Tag Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-700">
               <h2 className="text-xl font-semibold text-white">Add New Tag</h2>
               <button
                 onClick={() => {
                   setShowAddModal(false)
-                  setNewTagName('')
+                  setAddFormData({ name: '', slug: '', description: '', color: '' })
                 }}
                 className="text-gray-400 hover:text-white"
               >
@@ -573,44 +753,128 @@ export default function ProductTagsPage() {
               </button>
             </div>
 
-            <div className="p-6">
-              <div className="mb-4">
+            <div className="p-6 space-y-6">
+              {/* Tag Name */}
+              <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Tag Name *
                 </label>
                 <input
                   type="text"
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
+                  name="name"
+                  value={addFormData.name}
+                  onChange={handleAddInputChange}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter tag name"
+                  required
                   autoFocus
                 />
               </div>
-              
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  onClick={() => {
-                    setShowAddModal(false)
-                    setNewTagName('')
-                  }}
-                  disabled={creating}
-                  className="px-4 py-2 text-gray-300 hover:text-white transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateTag}
-                  disabled={creating || !newTagName.trim()}
-                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-blue-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {creating && (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  )}
-                  {creating ? 'Creating...' : 'Create Tag'}
-                </button>
+
+              {/* Slug */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Slug (Auto-generated)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={addFormData.slug}
+                    readOnly
+                    className="w-full px-3 py-2 pr-10 bg-gray-800 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="slug-auto-generated"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(addFormData.slug)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-white transition-colors"
+                    title="Copy slug"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={addFormData.description}
+                  onChange={handleAddInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Enter tag description (optional)"
+                />
+              </div>
+
+              {/* Color */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Color
+                </label>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { name: 'Blue', value: '#3B82F6' },
+                    { name: 'Emerald', value: '#10B981' },
+                    { name: 'Purple', value: '#8B5CF6' },
+                    { name: 'Orange', value: '#F97316' },
+                    { name: 'Red', value: '#EF4444' },
+                    { name: 'Cyan', value: '#06B6D4' },
+                    { name: 'Pink', value: '#EC4899' },
+                    { name: 'Indigo', value: '#6366F1' },
+                    { name: 'Yellow', value: '#F59E0B' },
+                    { name: 'Green', value: '#22C55E' }
+                  ].map((color) => (
+                    <button
+                      key={color.value}
+                      type="button"
+                      onClick={() => setAddFormData(prev => ({ ...prev, color: color.value }))}
+                      className={`w-[20px] h-[20px] rounded border-2 transition-all hover:scale-105 ${
+                        addFormData.color === color.value 
+                          ? 'border-white shadow-lg ring-2 ring-white/20' 
+                          : 'border-gray-600 hover:border-gray-400'
+                      }`}
+                      style={{ backgroundColor: color.value }}
+                      title={color.name}
+                    >
+                      {addFormData.color === color.value && (
+                        <svg className="w-3 h-3 text-white mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-700">
+              <button
+                onClick={() => {
+                  setShowAddModal(false)
+                  setAddFormData({ name: '', slug: '', description: '', color: '' })
+                }}
+                disabled={creating}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateTag}
+                disabled={creating || !addFormData.name.trim()}
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-blue-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {creating && (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                )}
+                {creating ? 'Creating...' : 'Create Tag'}
+              </button>
             </div>
           </div>
         </div>
@@ -757,6 +1021,84 @@ export default function ProductTagsPage() {
                 )}
                 {updating ? 'Updating...' : 'Update Tag'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {tagToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-red-600/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-white">Are you sure?</h3>
+                  <p className="text-sm text-gray-400">
+                    This action cannot be undone. This will permanently delete the tag and remove it from all products.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <div className="bg-gray-700 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 ${getColorClasses(getTagColor(tagToDelete)).bg} rounded flex items-center justify-center`}>
+                      <span className={`${getColorClasses(getTagColor(tagToDelete)).text} font-semibold text-sm`}>
+                        {tagToDelete.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="text-white font-medium">{tagToDelete.name}</span>
+                    <span className="text-gray-400 text-sm">({tagToDelete.productCount} {tagToDelete.productCount === 1 ? 'product' : 'products'})</span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-300 mb-3">
+                  To confirm deletion, type{' '}
+                  <code className="px-2 py-1 bg-gray-700 rounded text-white font-mono text-xs">
+                    {tagToDelete.name}
+                  </code>{' '}
+                  in the box below:
+                </p>
+
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type tag name to confirm"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={handleCancelDelete}
+                  disabled={!!deleting}
+                  className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={!!deleting || deleteConfirmText !== tagToDelete.name}
+                  className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Tag'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
