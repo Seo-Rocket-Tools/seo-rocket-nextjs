@@ -1168,7 +1168,7 @@ export default function ProductsManagerPage() {
                           ) : (
                             <span>📦</span>
                           )}
-                        </div>
+            </div>
                         <div>
                           <h3 className="font-semibold text-white">{product.software_name}</h3>
                           <p className="text-sm text-gray-400 truncate max-w-xs">{product.description}</p>
@@ -1565,9 +1565,9 @@ export default function ProductsManagerPage() {
                           Uploading icon...
                         </div>
                       )}
-                    </div>
-                  </div>
-                </div>
+          </div>
+        </div>
+      </div>
 
                 {/* Checkboxes */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1603,7 +1603,7 @@ export default function ProductsManagerPage() {
                     />
                     <span className="text-gray-300">Free</span>
                   </label>
-                </div>
+        </div>
 
                 {/* Tags Section */}
                 <div className="space-y-4">
@@ -1635,7 +1635,7 @@ export default function ProductsManagerPage() {
                           <div className="px-4 py-3 text-gray-400 text-center">
                             <div className="inline-block w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2"></div>
                             Loading tags...
-                          </div>
+        </div>
                         ) : (
                           <>
                             {/* Create new tag option */}
@@ -1684,7 +1684,7 @@ export default function ProductsManagerPage() {
                               ) : tagSearchTerm.trim() ? (
                                 <div className="px-3 py-2 text-sm text-gray-400">
                                   No matching tags found
-                                </div>
+      </div>
                               ) : allTags.filter(tag => !currentProductTags.find(t => t.id === tag.id)).length === 0 ? (
                                 <div className="px-3 py-2 text-sm text-gray-400">
                                   All available tags are already selected

@@ -1,4 +1,4 @@
-import { getActiveProducts, getFeaturedProducts, getProductsByTag, getAvailableTagsFromProducts, getAllProducts, Product, supabase, ProductWithTags, getProductsWithTagsByTag, getActiveProductsWithTags, getAllProductsWithTags, getFeaturedProductsWithTags } from '../lib/supabase'
+import { getActiveProducts, getFeaturedProducts, getProductsByTag, getAvailableTagsFromProducts, getAllProducts, Product, supabase, ProductWithTags, getProductsWithTagsByTag, getActiveProductsWithTags, getAllProductsWithTags, getFeaturedProductsWithTags, getAllTags } from '../lib/supabase'
 
 export interface SoftwareItem {
   id: string;
@@ -283,24 +283,52 @@ export function getSoftwareByTag(data: SoftwareData, tag: string, isAdmin: boole
   }
 }
 
-export function getAvailableTags(data: SoftwareData, isAdmin: boolean = false): string[] {
+export async function getAvailableTags(data: SoftwareData, isAdmin: boolean = false): Promise<string[]> {
   // System tags that should always come first
   const systemTags = ['Featured', 'Free', 'All'];
   
-  // Collect all unique tags from software items
-  const dynamicTags = new Set<string>();
-  const itemsToProcess = isAdmin ? data.software : data.software.filter(item => item.status === 'active');
-  
-  itemsToProcess.forEach(item => {
-    item.tags.forEach(tag => {
-      if (!systemTags.includes(tag)) {
-        dynamicTags.add(tag);
-      }
+  try {
+    // Get ordered tags from database
+    const orderedTags = await getAllTags();
+    
+    // Collect all unique tags from software items to check which ones are actually used
+    const usedTags = new Set<string>();
+    const itemsToProcess = isAdmin ? data.software : data.software.filter(item => item.status === 'active');
+    
+    itemsToProcess.forEach(item => {
+      item.tags.forEach(tag => {
+        if (!systemTags.includes(tag)) {
+          usedTags.add(tag);
+        }
+      });
     });
-  });
-  
-  // Return in order: System tags first, then alphabetically sorted dynamic tags
-  return [...systemTags, ...Array.from(dynamicTags).sort()];
+    
+    // Filter ordered tags to only include ones that are actually used by products
+    // and maintain the database order
+    const orderedUsedTags = orderedTags
+      .filter(tag => usedTags.has(tag.name))
+      .map(tag => tag.name);
+    
+    // Return in order: System tags first, then database-ordered dynamic tags
+    return [...systemTags, ...orderedUsedTags];
+    
+  } catch (error) {
+    console.error('Error loading ordered tags, falling back to alphabetical:', error);
+    
+    // Fallback to the original logic if database query fails
+    const dynamicTags = new Set<string>();
+    const itemsToProcess = isAdmin ? data.software : data.software.filter(item => item.status === 'active');
+    
+    itemsToProcess.forEach(item => {
+      item.tags.forEach(tag => {
+        if (!systemTags.includes(tag)) {
+          dynamicTags.add(tag);
+        }
+      });
+    });
+    
+    return [...systemTags, ...Array.from(dynamicTags).sort()];
+  }
 }
 
 // Direct Supabase query functions for better performance when needed

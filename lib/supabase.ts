@@ -36,6 +36,10 @@ export interface Product {
 export interface Tag {
   id: string
   name: string
+  slug: string
+  description?: string
+  color?: string
+  order_index: number
   created_at: string
 }
 
@@ -139,7 +143,7 @@ export async function getAllProductsWithTags(): Promise<ProductWithTags[]> {
         id,
         tag_id,
         order_position,
-        tag:tags(id, name, created_at)
+        tag:tags(id, name, slug, description, color, created_at)
       )
     `)
     .order('all_order', { ascending: true })
@@ -312,8 +316,8 @@ export async function getAllTags(): Promise<Tag[]> {
 
   const { data, error } = await supabase
     .from('tags')
-    .select('*')
-    .order('name')
+    .select('id, name, slug, description, color, order_index, created_at')
+    .order('order_index', { ascending: true })
 
   if (error) {
     console.error('Error fetching tags:', error)
@@ -634,6 +638,67 @@ export async function createTag(name: string): Promise<Tag | null> {
   }
 
   return data
+}
+
+export async function updateTag(tagId: string, updates: Partial<{
+  name: string
+  slug: string
+  description: string
+  color: string
+}>): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  try {
+    const { error } = await supabase
+      .from('tags')
+      .update(updates)
+      .eq('id', tagId)
+
+    if (error) {
+      console.error('Error updating tag:', error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in updateTag:', error)
+    return false
+  }
+}
+
+export async function reorderTags(tagIds: string[]): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  try {
+    // Update each tag's order_index based on the new order
+    const updates = tagIds.map((tagId, index) => 
+      supabase
+        .from('tags')
+        .update({ order_index: index })
+        .eq('id', tagId)
+    )
+
+    const results = await Promise.all(updates)
+    
+    // Check if any update failed
+    for (const result of results) {
+      if (result.error) {
+        console.error('Error updating tag order:', result.error)
+        return false
+      }
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in reorderTags:', error)
+    return false
+  }
 }
 
 export async function deleteProduct(productId: string): Promise<boolean> {

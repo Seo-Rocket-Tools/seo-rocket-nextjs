@@ -64,7 +64,7 @@ export default function Home() {
         setFilteredSoftware(tagResults)
       }
       
-      const availableTags = getAvailableTags(data, false)
+      const availableTags = await getAvailableTags(data, false)
       setAvailableFilterTags(availableTags)
       
     } catch (error) {
@@ -85,7 +85,7 @@ export default function Home() {
         console.log('Initial load - setting featured software, Results:', initialFeatured.length, 'items')
         setFilteredSoftware(initialFeatured)
         
-        const availableTags = getAvailableTags(data, false)
+        const availableTags = await getAvailableTags(data, false)
         setAvailableFilterTags(availableTags)
         
       } catch (error) {
@@ -116,7 +116,7 @@ export default function Home() {
           setFilteredSoftware(focusTag)
         }
         
-        const availableTags = getAvailableTags(data, false)
+        const availableTags = await getAvailableTags(data, false)
         setAvailableFilterTags(availableTags)
         
       } catch (error) {
