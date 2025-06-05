@@ -40,18 +40,31 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-black flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Background Glow Effect */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div 
+          className="absolute w-[800px] h-[800px] rounded-full opacity-40 blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(147, 51, 234, 0.6) 0%, rgba(139, 69, 219, 0.3) 40%, transparent 70%)',
+            top: '-400px',
+            right: '-400px',
+          }}
+        />
+      </div>
+
+      <div className="max-w-md w-full space-y-8 relative z-10">
         {/* Logo/Title */}
         <div className="text-center">
           <div className="mb-4">
             <img
-              src="/logo-light.svg"
+              src="/seo-rocket-light.svg"
               alt="SEO Rocket"
               className="mx-auto w-[160px] h-[48px] object-contain"
             />
           </div>
-          <p className="text-gray-400 text-lg">Reset Your Password</p>
+          <h1 className="text-2xl font-bold text-white mb-2">Reset Password</h1>
+          <p className="text-gray-400 text-lg">Admin Dashboard Access</p>
         </div>
 
         {/* Reset Form */}
@@ -80,7 +93,7 @@ export default function ForgotPasswordPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                placeholder="Enter your email address"
+                placeholder="Enter your admin email address"
                 disabled={loading}
               />
             </div>
@@ -95,7 +108,7 @@ export default function ForgotPasswordPage() {
 
             <div className="text-center space-y-2">
               <Link 
-                href="/login" 
+                href="/admin" 
                 className="text-blue-400 hover:text-blue-300 text-sm transition-colors block"
               >
                 Remember your password? Sign in
