@@ -20,12 +20,119 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { getAllTags, getAllProductsWithTags, createTag, updateTag, deleteTag, reorderTags, Tag, ProductWithTags } from '@/lib/supabase'
+import { getAllTags, getAllProductsWithTags, createTag, updateTag, deleteTag, reorderTags, getProductsInTagOrdered, reorderProductsInTagByIds, getProductsForSystemTag, reorderProductsForSystemTag, Tag, ProductWithTags } from '@/lib/supabase'
 
 interface TagWithStats extends Tag {
   productCount: number
   products: ProductWithTags[]
   description?: string
+}
+
+function SortableProductItem({ 
+  product, 
+  getColorClasses,
+  getTagColor,
+  isSystemTag,
+  systemTagType
+}: {
+  product: ProductWithTags
+  getColorClasses: (color: string) => { bg: string; text: string }
+  getTagColor: (tag: TagWithStats) => string
+  isSystemTag?: boolean
+  systemTagType?: 'featured' | 'free' | 'all'
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: product.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`p-4 transition-colors ${
+        isDragging 
+          ? 'bg-gray-700/50 shadow-lg border border-gray-600 rounded-lg' 
+          : 'hover:bg-gray-800/30'
+      }`}
+    >
+      <div className="flex items-center gap-4">
+        {/* Drag Handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+        </div>
+        
+        {/* Product Icon */}
+        <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
+          {product.icon_url ? (
+            <img 
+              src={product.icon_url} 
+              alt={product.software_name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-gray-400 text-sm font-semibold">
+              {product.software_name.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+        
+        {/* Product Info */}
+        <div className="flex-1">
+          <h4 className="text-white font-medium">{product.software_name}</h4>
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <span>{product.published ? 'Published' : 'Draft'}</span>
+            {product.featured && (
+              <>
+                <span>•</span>
+                <span className="text-yellow-400">Featured</span>
+              </>
+            )}
+            {product.free && (
+              <>
+                <span>•</span>
+                <span className="text-green-400">Free</span>
+              </>
+            )}
+          </div>
+        </div>
+        
+        {/* Order Position */}
+        <div className="text-sm text-gray-400">
+          #{(() => {
+            if (isSystemTag && systemTagType) {
+              switch (systemTagType) {
+                case 'featured':
+                  return product.featured_order ?? 0
+                case 'free':
+                  return product.free_order ?? 0
+                case 'all':
+                  return product.all_order ?? 0
+                default:
+                  return 0
+              }
+            }
+            return product.product_tags[0]?.order_position ?? 0
+          })()}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function SortableTagItem({ 
@@ -34,6 +141,7 @@ function SortableTagItem({
   setOpenDropdown, 
   handleEditTag,
   handleDeleteTag,
+  handleViewProducts,
   deleting,
   getColorClasses,
   getTagColor,
@@ -44,6 +152,7 @@ function SortableTagItem({
   setOpenDropdown: (id: string | null) => void
   handleEditTag: (tag: TagWithStats) => void
   handleDeleteTag: (tag: TagWithStats) => void
+  handleViewProducts: (tag: TagWithStats) => void
   deleting: string | null
   getColorClasses: (color: string) => { bg: string; text: string }
   getTagColor: (tag: TagWithStats) => string
@@ -67,11 +176,20 @@ function SortableTagItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-6 transition-colors ${
+      className={`p-6 transition-colors cursor-pointer ${
         isDragging 
           ? 'bg-gray-700/50 shadow-lg border border-gray-600 rounded-lg' 
           : 'hover:bg-gray-800/30'
       }`}
+      onClick={(e) => {
+        // Only trigger if not clicking on drag handle or dropdown trigger/menu
+        const target = e.target as Element
+        if (!target.closest('[data-drag-handle]') && 
+            !target.closest('[data-dropdown-trigger]') && 
+            !target.closest('[data-dropdown-menu]')) {
+          handleViewProducts(tag)
+        }
+      }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -79,6 +197,7 @@ function SortableTagItem({
           <div
             {...attributes}
             {...listeners}
+            data-drag-handle
             className="cursor-grab active:cursor-grabbing p-1 text-gray-500 hover:text-gray-300 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,6 +299,15 @@ export default function ProductTagsPage() {
   const [tagToDelete, setTagToDelete] = useState<TagWithStats | null>(null)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  
+  // Product management modal state
+  const [showProductModal, setShowProductModal] = useState(false)
+  const [selectedTag, setSelectedTag] = useState<TagWithStats | null>(null)
+  const [selectedSystemTag, setSelectedSystemTag] = useState<{ name: string; type: 'featured' | 'free' | 'all' } | null>(null)
+  const [tagProducts, setTagProducts] = useState<ProductWithTags[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [savingOrder, setSavingOrder] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -393,6 +521,45 @@ export default function ProductTagsPage() {
     setOpenDropdown(null)
   }
 
+  const handleViewProducts = async (tag: TagWithStats) => {
+    setSelectedTag(tag)
+    setSelectedSystemTag(null)
+    setLoadingProducts(true)
+    setShowProductModal(true)
+    setOpenDropdown(null)
+    setSavingOrder(false)
+    setLastSaved(null)
+    
+    try {
+      const products = await getProductsInTagOrdered(tag.id)
+      setTagProducts(products)
+    } catch (error) {
+      console.error('Error fetching products for tag:', error)
+      setTagProducts([])
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
+
+  const handleViewSystemTagProducts = async (systemTag: { name: string; type: 'featured' | 'free' | 'all' }) => {
+    setSelectedSystemTag(systemTag)
+    setSelectedTag(null)
+    setLoadingProducts(true)
+    setShowProductModal(true)
+    setSavingOrder(false)
+    setLastSaved(null)
+    
+    try {
+      const products = await getProductsForSystemTag(systemTag.type)
+      setTagProducts(products)
+    } catch (error) {
+      console.error('Error fetching products for system tag:', error)
+      setTagProducts([])
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
+
   const handleConfirmDelete = async () => {
     if (!tagToDelete || deleteConfirmText !== tagToDelete.name) {
       return
@@ -465,6 +632,40 @@ export default function ProductTagsPage() {
         console.error('Error saving tag order:', error)
         // Revert local state on error
         setTags(tags)
+      }
+    }
+  }
+
+  const handleProductDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id && (selectedTag || selectedSystemTag)) {
+      const oldIndex = tagProducts.findIndex((product) => product.id === active.id)
+      const newIndex = tagProducts.findIndex((product) => product.id === over?.id)
+
+      const newProducts = arrayMove(tagProducts, oldIndex, newIndex)
+      
+      // Update local state immediately for smooth UX
+      setTagProducts(newProducts)
+      setSavingOrder(true)
+
+      // Save new order to database
+      try {
+        const productIds = newProducts.map(product => product.id)
+        
+        if (selectedTag) {
+          await reorderProductsInTagByIds(selectedTag.id, productIds)
+        } else if (selectedSystemTag) {
+          await reorderProductsForSystemTag(selectedSystemTag.type, productIds)
+        }
+        
+        setLastSaved(new Date())
+      } catch (error) {
+        console.error('Error saving product order:', error)
+        // Revert local state on error
+        setTagProducts(tagProducts)
+      } finally {
+        setSavingOrder(false)
       }
     }
   }
@@ -543,7 +744,7 @@ export default function ProductTagsPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">Product Tags</h1>
           <p className="text-gray-400 mt-1">
-            Manage product tags and organize products within each tag
+            Manage product tags - click on any tag to view and reorder its products
           </p>
         </div>
         
@@ -602,7 +803,7 @@ export default function ProductTagsPage() {
         <div className="p-6 border-b border-gray-800">
           <h2 className="text-xl font-semibold text-white">All Tags</h2>
           <p className="text-gray-400 text-sm mt-1">
-            Click on a tag to manage product ordering within that tag
+            Click on any tag to view and reorder its products
           </p>
         </div>
 
@@ -616,11 +817,15 @@ export default function ProductTagsPage() {
           </div>
           <div className="divide-y divide-gray-800">
             {[
-              { name: 'Featured', color: '#F59E0B', description: 'Showcase premium products' },
-              { name: 'Free', color: '#22C55E', description: 'Free products and tools' },
-              { name: 'All', color: '#3B82F6', description: 'All published products' }
+              { name: 'Featured', color: '#F59E0B', description: 'Showcase premium products', type: 'featured' as const },
+              { name: 'Free', color: '#22C55E', description: 'Free products and tools', type: 'free' as const },
+              { name: 'All', color: '#3B82F6', description: 'All published products', type: 'all' as const }
             ].map((systemTag) => (
-              <div key={systemTag.name} className="p-6 bg-gray-900/30 border-l-4 border-amber-500/50">
+              <div 
+                key={systemTag.name} 
+                className="p-6 bg-gray-900/30 border-l-4 border-amber-500/50 cursor-pointer hover:bg-gray-800/40 transition-colors"
+                onClick={() => handleViewSystemTagProducts({ name: systemTag.name, type: systemTag.type })}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     {/* System Tag Indicator */}
@@ -722,6 +927,7 @@ export default function ProductTagsPage() {
                     setOpenDropdown={setOpenDropdown}
                     handleEditTag={handleEditTag}
                     handleDeleteTag={handleDeleteTag}
+                    handleViewProducts={handleViewProducts}
                     deleting={deleting}
                     getColorClasses={getColorClasses}
                     getTagColor={getTagColor}
@@ -1099,6 +1305,150 @@ export default function ProductTagsPage() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Management Modal */}
+      {showProductModal && (selectedTag || selectedSystemTag) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full h-full max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-700 flex-shrink-0">
+              <div>
+                <h2 className="text-lg sm:text-xl font-semibold text-white">
+                  Manage Products in "{selectedTag?.name || selectedSystemTag?.name}"
+                  {selectedSystemTag && (
+                    <span className="ml-2 px-2 py-1 text-xs font-medium bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
+                      SYSTEM
+                    </span>
+                  )}
+                </h2>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-gray-400 text-sm">
+                    {selectedSystemTag 
+                      ? `Drag and drop to reorder products for ${selectedSystemTag.name.toLowerCase()} listing`
+                      : 'Drag and drop to reorder products within this tag'
+                    }
+                  </p>
+                  {savingOrder && (
+                    <div className="flex items-center gap-2 text-blue-400 text-sm">
+                      <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Saving...</span>
+                    </div>
+                  )}
+                  {lastSaved && !savingOrder && (
+                    <div className="flex items-center gap-2 text-green-400 text-sm">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Auto-saved</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowProductModal(false)
+                  setSelectedTag(null)
+                  setSelectedSystemTag(null)
+                  setTagProducts([])
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 p-4 sm:p-6 overflow-y-auto min-h-0">
+              {loadingProducts ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center gap-3 text-gray-400">
+                    <div className="w-8 h-8 border-4 border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+                    <span>Loading products...</span>
+                  </div>
+                </div>
+              ) : tagProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m0 0V9a2 2 0 012-2h2m0 0V7a2 2 0 012-2h2a2 2 0 012 2v0M9 7v2m3-2v2m3-2v2" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-white mb-2">No Products Found</h3>
+                  <p className="text-gray-400">This tag doesn't have any products assigned to it yet.</p>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-white">
+                      Products ({tagProducts.length})
+                    </h3>
+                    <div className="text-sm text-gray-400">
+                      Ordered by position in tag
+                    </div>
+                  </div>
+
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleProductDragEnd}
+                  >
+                    <SortableContext items={tagProducts.map(product => product.id)} strategy={verticalListSortingStrategy}>
+                      <div className="bg-gray-900/50 rounded-lg divide-y divide-gray-800">
+                        {tagProducts.map((product) => (
+                          <SortableProductItem
+                            key={product.id}
+                            product={product}
+                            getColorClasses={getColorClasses}
+                            getTagColor={getTagColor}
+                            isSystemTag={!!selectedSystemTag}
+                            systemTagType={selectedSystemTag?.type}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between p-4 sm:p-6 border-t border-gray-700 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                {savingOrder ? (
+                  <div className="flex items-center gap-2 text-blue-400 text-sm">
+                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span>Saving changes...</span>
+                  </div>
+                ) : lastSaved ? (
+                  <div className="flex items-center gap-2 text-green-400 text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Changes saved automatically</span>
+                  </div>
+                ) : (
+                  <div className="text-gray-400 text-sm">
+                    Changes save automatically when you reorder
+                  </div>
+                )}
+              </div>
+              
+              <button
+                onClick={() => {
+                  setShowProductModal(false)
+                  setSelectedTag(null)
+                  setSelectedSystemTag(null)
+                  setTagProducts([])
+                  setLastSaved(null)
+                  setSavingOrder(false)
+                }}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

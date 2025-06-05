@@ -587,6 +587,201 @@ export async function getProductTagsByTag(tagId: string): Promise<ProductTag[]> 
   return data || []
 }
 
+export async function getProductsInTagOrdered(tagId: string): Promise<ProductWithTags[]> {
+  if (!supabase) {
+    console.warn('Supabase not configured, returning empty array')
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('product_tags')
+    .select(`
+      id,
+      product_id,
+      tag_id,
+      order_position,
+      created_at,
+      product:products (
+        id,
+        software_name,
+        slug,
+        description,
+        url,
+        published,
+        featured,
+        free,
+        image_url,
+        icon_url,
+        created_at,
+        priority,
+        featured_order,
+        free_order,
+        all_order
+      )
+    `)
+    .eq('tag_id', tagId)
+    .order('order_position', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching products in tag:', error)
+    return []
+  }
+
+  // Transform the data to match ProductWithTags interface
+  const products: ProductWithTags[] = (data || [])
+    .filter(item => item.product) // Filter out any null products
+    .map((item: any) => ({
+      id: item.product.id,
+      software_name: item.product.software_name,
+      slug: item.product.slug,
+      description: item.product.description,
+      url: item.product.url,
+      published: item.product.published,
+      featured: item.product.featured,
+      free: item.product.free,
+      image_url: item.product.image_url,
+      icon_url: item.product.icon_url,
+      created_at: item.product.created_at,
+      priority: item.product.priority,
+      featured_order: item.product.featured_order,
+      free_order: item.product.free_order,
+      all_order: item.product.all_order,
+      product_tags: [{
+        id: item.id,
+        tag_id: item.tag_id,
+        order_position: item.order_position,
+        tag: { id: tagId } as Tag // We'll have the tag info from the calling context
+      }]
+    }))
+
+  return products
+}
+
+export async function reorderProductsInTagByIds(tagId: string, productIds: string[]): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  try {
+    // Update each product's order_position based on the new order
+    const updates = productIds.map((productId, index) => 
+      supabase
+        .from('product_tags')
+        .update({ order_position: index })
+        .eq('tag_id', tagId)
+        .eq('product_id', productId)
+    )
+
+    const results = await Promise.all(updates)
+    
+    // Check if any update failed
+    for (const result of results) {
+      if (result.error) {
+        console.error('Error updating product order in tag:', result.error)
+        return false
+      }
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in reorderProductsInTagByIds:', error)
+    return false
+  }
+}
+
+export async function getProductsForSystemTag(systemTagType: 'featured' | 'free' | 'all'): Promise<ProductWithTags[]> {
+  if (!supabase) {
+    console.warn('Supabase not configured, returning empty array')
+    return []
+  }
+
+  let query = supabase
+    .from('products')
+    .select(`
+      *,
+      product_tags (
+        id,
+        tag_id,
+        order_position,
+        tag:tags (*)
+      )
+    `)
+    .eq('published', true)
+
+  // Add specific filters based on system tag type
+  switch (systemTagType) {
+    case 'featured':
+      query = query.eq('featured', true)
+      break
+    case 'free':
+      query = query.eq('free', true)
+      break
+    case 'all':
+      // No additional filter needed, just published=true
+      break
+  }
+
+  // Order by the appropriate field
+  switch (systemTagType) {
+    case 'featured':
+      query = query.order('featured_order', { ascending: true })
+      break
+    case 'free':
+      query = query.order('free_order', { ascending: true })
+      break
+    case 'all':
+      query = query.order('all_order', { ascending: true })
+      break
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Error fetching products for system tag:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function reorderProductsForSystemTag(
+  systemTagType: 'featured' | 'free' | 'all', 
+  productIds: string[]
+): Promise<boolean> {
+  if (!supabase) {
+    console.warn('Supabase not configured')
+    return false
+  }
+
+  try {
+    const orderField = `${systemTagType}_order`
+    
+    // Update each product's order field based on the new order
+    const updates = productIds.map((productId, index) => 
+      supabase
+        .from('products')
+        .update({ [orderField]: index })
+        .eq('id', productId)
+    )
+
+    const results = await Promise.all(updates)
+    
+    // Check if any update failed
+    for (const result of results) {
+      if (result.error) {
+        console.error('Error updating product order for system tag:', result.error)
+        return false
+      }
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in reorderProductsForSystemTag:', error)
+    return false
+  }
+}
+
 export async function updateProduct(productId: string, updates: Partial<{
   software_name: string
   slug: string
