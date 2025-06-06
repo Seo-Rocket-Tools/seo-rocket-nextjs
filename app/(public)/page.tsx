@@ -59,7 +59,7 @@ export default function Home() {
         console.log('Setting featured software, Results:', featuredResults.length, 'items')
         setFilteredSoftware(featuredResults)
       } else {
-        const tagResults = getSoftwareByTag(data, activeFilter, false)
+        const tagResults = await getSoftwareByTag(data, activeFilter, false)
         console.log('Setting tag software for', activeFilter, 'Results:', tagResults.length, 'items')
         setFilteredSoftware(tagResults)
       }
@@ -111,7 +111,7 @@ export default function Home() {
           console.log('Focus reload - setting featured software, Results:', focusFeatured.length, 'items')
           setFilteredSoftware(focusFeatured)
         } else {
-          const focusTag = getSoftwareByTag(data, activeFilter, false)
+          const focusTag = await getSoftwareByTag(data, activeFilter, false)
           console.log('Focus reload - setting tag software for', activeFilter, 'Results:', focusTag.length, 'items')
           setFilteredSoftware(focusTag)
         }
@@ -128,7 +128,7 @@ export default function Home() {
     return () => window.removeEventListener('focus', handleFocus)
   }, [activeFilter])
 
-  const handleFilterChange = (filter: string) => {
+  const handleFilterChange = async (filter: string) => {
     setActiveFilter(filter)
     if (softwareData) {
       if (filter === 'Featured') {
@@ -136,7 +136,7 @@ export default function Home() {
         console.log('Filter change - setting featured software, Results:', featuredResults.length, 'items')
         setFilteredSoftware(featuredResults)
       } else {
-        const tagResults = getSoftwareByTag(softwareData, filter, false)
+        const tagResults = await getSoftwareByTag(softwareData, filter, false)
         console.log('Filter change - setting tag software for', filter, 'Results:', tagResults.length, 'items')
         setFilteredSoftware(tagResults)
       }

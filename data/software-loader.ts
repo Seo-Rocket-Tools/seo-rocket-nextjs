@@ -63,10 +63,10 @@ function convertProductToSoftwareItem(product: Product): SoftwareItem {
     featured: product.featured,
     url: product.url,
     pricing: (product.free ? 'free' : 'premium') as 'free' | 'premium' | 'freemium',
-    priority: product.priority || 100, // Include priority with fallback
-    featured_order: product.featured_order || 0,
-    free_order: product.free_order || 0,
-    all_order: product.all_order || 0
+    priority: product.priority ?? 100, // Include priority with fallback
+    featured_order: product.featured_order ?? 0,
+    free_order: product.free_order ?? 0,
+    all_order: product.all_order ?? 0
   }
   
   console.log('  - Final SoftwareItem:', result)
@@ -96,10 +96,10 @@ function convertProductWithTagsToSoftwareItem(product: ProductWithTags): Softwar
     featured: product.featured,
     url: product.url,
     pricing: product.free ? 'free' : 'premium',
-    priority: product.priority || 100,
-    featured_order: product.featured_order || 0,
-    free_order: product.free_order || 0,
-    all_order: product.all_order || 0
+    priority: product.priority ?? 100,
+    featured_order: product.featured_order ?? 0,
+    free_order: product.free_order ?? 0,
+    all_order: product.all_order ?? 0
   }
 }
 
@@ -246,40 +246,56 @@ export async function loadFeaturedSoftwareData(): Promise<SoftwareData> {
 export function getActiveSoftware(data: SoftwareData): SoftwareItem[] {
   return data.software
     .filter(item => item.status === 'active')
-    .sort((a, b) => (a.all_order || 100) - (b.all_order || 100));
+    .sort((a, b) => (a.all_order ?? 100) - (b.all_order ?? 100));
 }
 
 export function getFeaturedSoftware(data: SoftwareData, isAdmin: boolean = false): SoftwareItem[] {
   return isAdmin
-    ? data.software.filter(item => item.featured).sort((a, b) => (a.featured_order || 100) - (b.featured_order || 100))
-    : data.software.filter(item => item.featured && item.status === 'active').sort((a, b) => (a.featured_order || 100) - (b.featured_order || 100));
+    ? data.software.filter(item => item.featured).sort((a, b) => (a.featured_order ?? 100) - (b.featured_order ?? 100))
+    : data.software.filter(item => item.featured && item.status === 'active').sort((a, b) => (a.featured_order ?? 100) - (b.featured_order ?? 100));
 }
 
-export function getSoftwareByTag(data: SoftwareData, tag: string, isAdmin: boolean = false): SoftwareItem[] {
+export async function getSoftwareByTag(data: SoftwareData, tag: string, isAdmin: boolean = false): Promise<SoftwareItem[]> {
   let filtered: SoftwareItem[] = [];
   
   if (tag === 'All') {
     filtered = isAdmin ? data.software : data.software.filter(item => item.status === 'active');
     // Sort by all_order for 'All' filter
-    return filtered.sort((a, b) => (a.all_order || 100) - (b.all_order || 100));
+    return filtered.sort((a, b) => (a.all_order ?? 100) - (b.all_order ?? 100));
   } else if (tag === 'Featured') {
     filtered = isAdmin 
       ? data.software.filter(item => item.featured)
       : data.software.filter(item => item.featured && item.status === 'active');
     // Sort by featured_order for 'Featured' filter
-    return filtered.sort((a, b) => (a.featured_order || 100) - (b.featured_order || 100));
+    return filtered.sort((a, b) => (a.featured_order ?? 100) - (b.featured_order ?? 100));
   } else if (tag === 'Free') {
     filtered = isAdmin
       ? data.software.filter(item => item.pricing === 'free')
       : data.software.filter(item => item.pricing === 'free' && item.status === 'active');
     // Sort by free_order for 'Free' filter
-    return filtered.sort((a, b) => (a.free_order || 100) - (b.free_order || 100));
+    return filtered.sort((a, b) => (a.free_order ?? 100) - (b.free_order ?? 100));
   } else {
-    filtered = isAdmin
-      ? data.software.filter(item => item.tags.includes(tag))
-      : data.software.filter(item => item.tags.includes(tag) && item.status === 'active');
-    // Sort by priority for custom tags (they use the junction table order_position)
-    return filtered.sort((a, b) => (a.priority || 100) - (b.priority || 100));
+    // For custom tags, get the ordered products directly from database using junction table
+    try {
+      const orderedProducts = await getProductsWithTagsByTag(tag, isAdmin);
+      const orderedSoftwareItems = orderedProducts.map(convertProductWithTagsToSoftwareItem);
+      
+      // Filter for published status if not admin
+      if (!isAdmin) {
+        return orderedSoftwareItems.filter(item => item.status === 'active');
+      }
+      
+      return orderedSoftwareItems;
+    } catch (error) {
+      console.error('Error getting ordered products for tag, falling back to priority sorting:', error);
+      
+      // Fallback to in-memory filtering and priority sorting
+      filtered = isAdmin
+        ? data.software.filter(item => item.tags.includes(tag))
+        : data.software.filter(item => item.tags.includes(tag) && item.status === 'active');
+      
+      return filtered.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+    }
   }
 }
 
