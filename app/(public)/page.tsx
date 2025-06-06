@@ -31,13 +31,13 @@ export default function Home() {
   // State for available filter tags
   const [availableFilterTags, setAvailableFilterTags] = useState<string[]>(['Featured', 'Free', 'All'])
 
-  // Setup realtime connection
+  // Setup realtime connection - DISABLED FOR TESTING
   const { isConnected, error: realtimeError } = useRealtime({
     onProductChange: () => {
       console.log('Realtime update received, refreshing data')
       refreshData()
     },
-    enabled: true
+    enabled: false // DISABLED FOR TESTING
   })
 
   // Update realtime status when connection changes
@@ -50,17 +50,14 @@ export default function Home() {
 
   const refreshData = useCallback(async () => {
     try {
-      console.log('Refreshing data due to realtime update')
       const data = await loadSoftwareData()
       setSoftwareData(data)
       
       if (activeFilter === 'Featured') {
         const featuredResults = getFeaturedSoftware(data, false)
-        console.log('Setting featured software, Results:', featuredResults.length, 'items')
         setFilteredSoftware(featuredResults)
       } else {
         const tagResults = await getSoftwareByTag(data, activeFilter, false)
-        console.log('Setting tag software for', activeFilter, 'Results:', tagResults.length, 'items')
         setFilteredSoftware(tagResults)
       }
       
@@ -77,12 +74,10 @@ export default function Home() {
     async function loadData() {
       setIsLoading(true)
       try {
-        console.log('Loading software data')
         const data = await loadSoftwareData()
         setSoftwareData(data)
         
         const initialFeatured = getFeaturedSoftware(data, false)
-        console.log('Initial load - setting featured software, Results:', initialFeatured.length, 'items')
         setFilteredSoftware(initialFeatured)
         
         const availableTags = await getAvailableTags(data, false)
@@ -102,17 +97,14 @@ export default function Home() {
   useEffect(() => {
     const handleFocus = async () => {
       try {
-        console.log('Page focused, reloading software data')
         const data = await loadSoftwareData()
         setSoftwareData(data)
         
         if (activeFilter === 'Featured') {
           const focusFeatured = getFeaturedSoftware(data, false)
-          console.log('Focus reload - setting featured software, Results:', focusFeatured.length, 'items')
           setFilteredSoftware(focusFeatured)
         } else {
           const focusTag = await getSoftwareByTag(data, activeFilter, false)
-          console.log('Focus reload - setting tag software for', activeFilter, 'Results:', focusTag.length, 'items')
           setFilteredSoftware(focusTag)
         }
         
@@ -133,11 +125,9 @@ export default function Home() {
     if (softwareData) {
       if (filter === 'Featured') {
         const featuredResults = getFeaturedSoftware(softwareData, false)
-        console.log('Filter change - setting featured software, Results:', featuredResults.length, 'items')
         setFilteredSoftware(featuredResults)
       } else {
         const tagResults = await getSoftwareByTag(softwareData, filter, false)
-        console.log('Filter change - setting tag software for', filter, 'Results:', tagResults.length, 'items')
         setFilteredSoftware(tagResults)
       }
     }
@@ -333,11 +323,13 @@ export default function Home() {
         className="px-4 sm:px-6 pb-8 sm:pb-12 relative z-10"
       >
         <div className="max-w-7xl mx-auto">
+
+          
           {/* Filter Tabs */}
           <div className="relative mb-6 sm:mb-8 max-w-4xl mx-auto h-12 flex items-center">
             <div 
               id="filter-container"
-              className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide px-12 sm:px-16 py-2 flex-1"
+              className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide px-12 sm:px-16 py-2 flex-1 relative z-[150]"
               style={{
                 scrollbarWidth: 'none',
                 msOverflowStyle: 'none',
@@ -347,7 +339,7 @@ export default function Home() {
                 <button
                   key={filter}
                   onClick={() => handleFilterChange(filter)}
-                  className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 whitespace-nowrap flex-shrink-0 min-h-[40px] flex items-center relative"
+                  className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 whitespace-nowrap flex-shrink-0 min-h-[40px] flex items-center relative z-[200]"
                   style={{
                     backgroundColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.05)',
                     borderColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.15)',

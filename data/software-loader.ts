@@ -256,33 +256,42 @@ export function getFeaturedSoftware(data: SoftwareData, isAdmin: boolean = false
 }
 
 export async function getSoftwareByTag(data: SoftwareData, tag: string, isAdmin: boolean = false): Promise<SoftwareItem[]> {
+  console.log('getSoftwareByTag called with tag:', tag, 'isAdmin:', isAdmin);
   let filtered: SoftwareItem[] = [];
   
   if (tag === 'All') {
+    console.log('Processing system tag: All');
     filtered = isAdmin ? data.software : data.software.filter(item => item.status === 'active');
     // Sort by all_order for 'All' filter
     return filtered.sort((a, b) => (a.all_order ?? 100) - (b.all_order ?? 100));
   } else if (tag === 'Featured') {
+    console.log('Processing system tag: Featured');
     filtered = isAdmin 
       ? data.software.filter(item => item.featured)
       : data.software.filter(item => item.featured && item.status === 'active');
     // Sort by featured_order for 'Featured' filter
     return filtered.sort((a, b) => (a.featured_order ?? 100) - (b.featured_order ?? 100));
   } else if (tag === 'Free') {
+    console.log('Processing system tag: Free');
     filtered = isAdmin
       ? data.software.filter(item => item.pricing === 'free')
       : data.software.filter(item => item.pricing === 'free' && item.status === 'active');
     // Sort by free_order for 'Free' filter
     return filtered.sort((a, b) => (a.free_order ?? 100) - (b.free_order ?? 100));
   } else {
+    console.log('Processing custom tag:', tag);
     // For custom tags, get the ordered products directly from database using junction table
     try {
+      console.log('Calling getProductsWithTagsByTag for custom tag:', tag);
       const orderedProducts = await getProductsWithTagsByTag(tag, isAdmin);
+      console.log('getProductsWithTagsByTag returned:', orderedProducts.length, 'products');
       const orderedSoftwareItems = orderedProducts.map(convertProductWithTagsToSoftwareItem);
       
       // Filter for published status if not admin
       if (!isAdmin) {
-        return orderedSoftwareItems.filter(item => item.status === 'active');
+        const activeItems = orderedSoftwareItems.filter(item => item.status === 'active');
+        console.log('Filtered to active items:', activeItems.length, 'of', orderedSoftwareItems.length);
+        return activeItems;
       }
       
       return orderedSoftwareItems;
@@ -294,6 +303,7 @@ export async function getSoftwareByTag(data: SoftwareData, tag: string, isAdmin:
         ? data.software.filter(item => item.tags.includes(tag))
         : data.software.filter(item => item.tags.includes(tag) && item.status === 'active');
       
+      console.log('Fallback: found', filtered.length, 'items using in-memory filtering');
       return filtered.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
     }
   }

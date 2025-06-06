@@ -24,7 +24,7 @@ export interface Product {
   published: boolean
   featured: boolean
   free: boolean
-  image_url: string
+  image_url?: string // Optional since this field might not exist in database
   icon_url: string
   created_at: string
   priority: number
@@ -409,6 +409,8 @@ export async function getProductsWithTagsByTag(tagName: string, includeUnpublish
     return []
   }
 
+
+
   const query = supabase
     .from('products')
     .select(`
@@ -421,7 +423,6 @@ export async function getProductsWithTagsByTag(tagName: string, includeUnpublish
       )
     `)
     .eq('product_tags.tag.name', tagName)
-    .order('product_tags.order_position', { ascending: true })
 
   if (!includeUnpublished) {
     query.eq('published', true)
@@ -429,12 +430,25 @@ export async function getProductsWithTagsByTag(tagName: string, includeUnpublish
 
   const { data, error } = await query
 
+
+
   if (error) {
     console.error('Error fetching products with tags:', error)
     return []
   }
 
-  return data || []
+  if (!data) return []
+
+  // Sort by order_position after fetching since we can't use dot notation in Supabase order()
+  const sortedData = data.sort((a, b) => {
+    const aPosition = a.product_tags[0]?.order_position ?? 999
+    const bPosition = b.product_tags[0]?.order_position ?? 999
+    return aPosition - bPosition
+  })
+
+
+
+  return sortedData
 }
 
 export async function addProductToTag(productId: string, tagId: string, orderPosition?: number): Promise<boolean> {
@@ -610,13 +624,20 @@ export async function getProductsInTagOrdered(tagId: string): Promise<ProductWit
         published,
         featured,
         free,
-        image_url,
         icon_url,
         created_at,
         priority,
         featured_order,
         free_order,
         all_order
+      ),
+      tag:tags (
+        id,
+        name,
+        slug,
+        description,
+        color,
+        created_at
       )
     `)
     .eq('tag_id', tagId)
@@ -639,7 +660,7 @@ export async function getProductsInTagOrdered(tagId: string): Promise<ProductWit
       published: item.product.published,
       featured: item.product.featured,
       free: item.product.free,
-      image_url: item.product.image_url,
+      image_url: undefined, // Field doesn't exist in database
       icon_url: item.product.icon_url,
       created_at: item.product.created_at,
       priority: item.product.priority,
@@ -650,7 +671,7 @@ export async function getProductsInTagOrdered(tagId: string): Promise<ProductWit
         id: item.id,
         tag_id: item.tag_id,
         order_position: item.order_position,
-        tag: { id: tagId } as Tag // We'll have the tag info from the calling context
+        tag: item.tag
       }]
     }))
 
@@ -707,18 +728,18 @@ export async function getProductsForSystemTag(systemTagType: 'featured' | 'free'
         tag:tags (*)
       )
     `)
-    .eq('published', true)
 
   // Add specific filters based on system tag type
   switch (systemTagType) {
     case 'featured':
-      query = query.eq('featured', true)
+      query = query.eq('published', true).eq('featured', true)
       break
     case 'free':
-      query = query.eq('free', true)
+      query = query.eq('published', true).eq('free', true)
       break
     case 'all':
-      // No additional filter needed, just published=true
+      // For 'all' tag, include both published and unpublished products in admin
+      // No additional filter needed
       break
   }
 
@@ -791,6 +812,9 @@ export async function updateProduct(productId: string, updates: Partial<{
   featured: boolean
   free: boolean
   icon_url: string
+  featured_order: number | null
+  free_order: number | null
+  all_order: number | null
 }>): Promise<boolean> {
   if (!supabase) {
     console.warn('Supabase not configured')

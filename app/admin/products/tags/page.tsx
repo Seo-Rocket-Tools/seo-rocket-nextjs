@@ -20,7 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { getAllTags, getAllProductsWithTags, createTag, updateTag, deleteTag, reorderTags, getProductsInTagOrdered, reorderProductsInTagByIds, getProductsForSystemTag, reorderProductsForSystemTag, Tag, ProductWithTags } from '@/lib/supabase'
+import { getAllTags, getAllProductsWithTags, createTag, updateTag, deleteTag, reorderTags, getProductsInTagOrdered, reorderProductsInTagByIds, getProductsForSystemTag, reorderProductsForSystemTag, removeProductFromTag, updateProduct, Tag, ProductWithTags, addProductToTag, supabase } from '@/lib/supabase'
 
 interface TagWithStats extends Tag {
   productCount: number
@@ -33,13 +33,23 @@ function SortableProductItem({
   getColorClasses,
   getTagColor,
   isSystemTag,
-  systemTagType
+  systemTagType,
+  handleRemoveFromTag,
+  handleRemoveFromSystemTag,
+  handleTogglePublish,
+  togglingPublish,
+  removingProduct
 }: {
   product: ProductWithTags
   getColorClasses: (color: string) => { bg: string; text: string }
   getTagColor: (tag: TagWithStats) => string
   isSystemTag?: boolean
   systemTagType?: 'featured' | 'free' | 'all'
+  handleRemoveFromTag?: (productId: string) => void
+  handleRemoveFromSystemTag?: (productId: string, systemTagType: 'featured' | 'free' | 'all') => void
+  handleTogglePublish?: (productId: string, newPublishedState: boolean) => void
+  togglingPublish?: string | null
+  removingProduct?: string | null
 }) {
   const {
     attributes,
@@ -79,15 +89,15 @@ function SortableProductItem({
         
         {/* Product Icon */}
         <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
-          {product.icon_url ? (
+          {product.icon_url && product.icon_url.startsWith('http') ? (
             <img 
               src={product.icon_url} 
               alt={product.software_name}
               className="w-full h-full object-cover"
             />
           ) : (
-            <span className="text-gray-400 text-sm font-semibold">
-              {product.software_name.charAt(0).toUpperCase()}
+            <span className="text-xl">
+              {product.icon_url || '📦'}
             </span>
           )}
         </div>
@@ -112,24 +122,74 @@ function SortableProductItem({
           </div>
         </div>
         
-        {/* Order Position */}
-        <div className="text-sm text-gray-400">
-          #{(() => {
-            if (isSystemTag && systemTagType) {
-              switch (systemTagType) {
-                case 'featured':
-                  return product.featured_order ?? 0
-                case 'free':
-                  return product.free_order ?? 0
-                case 'all':
-                  return product.all_order ?? 0
-                default:
-                  return 0
+        {/* Action Button - Publish/Unpublish for All tag, Remove for others */}
+        {isSystemTag && systemTagType === 'all' ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              if (handleTogglePublish && togglingPublish !== product.id) {
+                handleTogglePublish(product.id, !product.published)
               }
-            }
-            return product.product_tags[0]?.order_position ?? 0
-          })()}
-        </div>
+            }}
+            disabled={togglingPublish === product.id}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              product.published
+                ? 'bg-gray-600/20 text-gray-400 border-gray-600/30 hover:bg-gray-600/30 hover:text-gray-300 hover:border-gray-500/50'
+                : 'bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30 hover:text-blue-300 hover:border-blue-500/50'
+            }`}
+          >
+            {togglingPublish === product.id ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                {product.published ? 'Unpublishing...' : 'Publishing...'}
+              </>
+            ) : product.published ? (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                </svg>
+                Unpublish
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Publish
+              </>
+            )}
+          </button>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              if (removingProduct !== product.id) {
+                if (isSystemTag && systemTagType && handleRemoveFromSystemTag) {
+                  handleRemoveFromSystemTag(product.id, systemTagType)
+                } else if (handleRemoveFromTag) {
+                  handleRemoveFromTag(product.id)
+                }
+              }
+            }}
+            disabled={removingProduct === product.id}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600/20 text-red-400 border border-red-600/30 rounded-full hover:bg-red-600/30 hover:text-red-300 hover:border-red-500/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {removingProduct === product.id ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                Removing...
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Remove
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -308,6 +368,15 @@ export default function ProductTagsPage() {
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [savingOrder, setSavingOrder] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [togglingPublish, setTogglingPublish] = useState<string | null>(null)
+  const [removingProduct, setRemovingProduct] = useState<string | null>(null)
+
+  // Add Product functionality state
+  const [productSearchTerm, setProductSearchTerm] = useState('')
+  const [showProductDropdown, setShowProductDropdown] = useState(false)
+  const [availableProducts, setAvailableProducts] = useState<ProductWithTags[]>([])
+  const [searchingProducts, setSearchingProducts] = useState(false)
+  const [loadingProductAdd, setLoadingProductAdd] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -325,6 +394,15 @@ export default function ProductTagsPage() {
     fetchData()
   }, [])
 
+  // Trigger product search when search term changes
+  useEffect(() => {
+    if (productSearchTerm.trim()) {
+      fetchAvailableProducts()
+    } else {
+      setAvailableProducts([])
+    }
+  }, [productSearchTerm])
+
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -335,13 +413,21 @@ export default function ProductTagsPage() {
           setOpenDropdown(null)
         }
       }
+      
+      // Close product search dropdown
+      if (showProductDropdown) {
+        const target = event.target as Element
+        if (!target.closest('.product-search-container')) {
+          setShowProductDropdown(false)
+        }
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [openDropdown])
+  }, [openDropdown, showProductDropdown])
 
   const fetchData = async () => {
     try {
@@ -361,10 +447,17 @@ export default function ProductTagsPage() {
           product.product_tags?.some(pt => pt.tag.id === tag.id)
         )
         
+        // Sort products by their order_position for this specific tag
+        const sortedTagProducts = tagProducts.sort((a, b) => {
+          const aOrderPosition = a.product_tags?.find(pt => pt.tag.id === tag.id)?.order_position ?? 999
+          const bOrderPosition = b.product_tags?.find(pt => pt.tag.id === tag.id)?.order_position ?? 999
+          return aOrderPosition - bOrderPosition
+        })
+        
         return {
           ...tag,
-          productCount: tagProducts.length,
-          products: tagProducts
+          productCount: sortedTagProducts.length,
+          products: sortedTagProducts
         }
       })
       
@@ -532,10 +625,21 @@ export default function ProductTagsPage() {
     
     try {
       const products = await getProductsInTagOrdered(tag.id)
-      setTagProducts(products)
+      
+      // If getProductsInTagOrdered returns empty but we have products in the tag stats, use those as fallback
+      if (products.length === 0 && tag.products && tag.products.length > 0) {
+        setTagProducts(tag.products)
+      } else {
+        setTagProducts(products)
+      }
     } catch (error) {
       console.error('Error fetching products for tag:', error)
-      setTagProducts([])
+      // Try fallback to tag.products if available
+      if (tag.products && tag.products.length > 0) {
+        setTagProducts(tag.products)
+      } else {
+        setTagProducts([])
+      }
     } finally {
       setLoadingProducts(false)
     }
@@ -667,6 +771,271 @@ export default function ProductTagsPage() {
       } finally {
         setSavingOrder(false)
       }
+    }
+  }
+
+  const handleRemoveFromTag = async (productId: string) => {
+    if (!selectedTag) return
+
+    try {
+      setRemovingProduct(productId)
+      
+      // Remove from database
+      await removeProductFromTag(productId, selectedTag.id)
+      
+      // Remove from local state
+      setTagProducts(prev => prev.filter(product => product.id !== productId))
+      
+      // Update the main tags list to reflect new product count without full reload
+      setTags(prev => prev.map(tag => 
+        tag.id === selectedTag.id 
+          ? { ...tag, productCount: tag.productCount - 1 }
+          : tag
+      ))
+      
+      setLastSaved(new Date())
+    } catch (error) {
+      console.error('Error removing product from tag:', error)
+    } finally {
+      setRemovingProduct(null)
+    }
+  }
+
+  const handleRemoveFromSystemTag = async (productId: string, systemTagType: 'featured' | 'free' | 'all') => {
+    try {
+      setRemovingProduct(productId)
+      
+      // Handle different system tag types
+      switch (systemTagType) {
+        case 'featured':
+          await updateProduct(productId, { 
+            featured: false, 
+            featured_order: null 
+          })
+          break
+        case 'free':
+          await updateProduct(productId, { 
+            free: false, 
+            free_order: null 
+          })
+          break
+        case 'all':
+          // For 'all' tag, we don't remove - this is handled by handleTogglePublish
+          return
+      }
+      
+      // Remove from local state (except for 'all' tag)
+      setTagProducts(prev => prev.filter(product => product.id !== productId))
+      
+      // Update main products list to reflect changes without full reload
+      setProducts(prev => prev.map(product => 
+        product.id === productId 
+          ? { 
+              ...product, 
+              featured: systemTagType === 'featured' ? false : product.featured,
+              free: systemTagType === 'free' ? false : product.free
+            }
+          : product
+      ))
+      
+      setLastSaved(new Date())
+    } catch (error) {
+      console.error('Error removing product from system tag:', error)
+    } finally {
+      setRemovingProduct(null)
+    }
+  }
+
+  const handleTogglePublish = async (productId: string, newPublishedState: boolean) => {
+    try {
+      setTogglingPublish(productId)
+      
+      // Update the product's published status
+      await updateProduct(productId, { published: newPublishedState })
+      
+      // Update local state to reflect the change without removing the product
+      setTagProducts(prev => prev.map(product => 
+        product.id === productId 
+          ? { ...product, published: newPublishedState }
+          : product
+      ))
+      
+      setLastSaved(new Date())
+    } catch (error) {
+      console.error('Error toggling product publish status:', error)
+    } finally {
+      setTogglingPublish(null)
+    }
+  }
+
+  // Add Product functionality
+  const fetchAvailableProducts = async () => {
+    if (!productSearchTerm.trim()) {
+      setAvailableProducts([])
+      return
+    }
+
+    try {
+      setSearchingProducts(true)
+      
+      // Get all products
+      const allProducts = await getAllProductsWithTags()
+      
+      // Filter out products that are already in this tag
+      const currentProductIds = new Set(tagProducts.map(p => p.id))
+      
+      // Filter products based on search term and exclude already added products
+      const filtered = allProducts.filter(product => {
+        const matchesSearch = product.software_name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                             product.slug.toLowerCase().includes(productSearchTerm.toLowerCase())
+        const notAlreadyAdded = !currentProductIds.has(product.id)
+        
+        return matchesSearch && notAlreadyAdded
+      })
+      
+      setAvailableProducts(filtered)
+    } catch (error) {
+      console.error('Error fetching available products:', error)
+      setAvailableProducts([])
+    } finally {
+      setSearchingProducts(false)
+    }
+  }
+
+  const handleAddProductToTag = async (product: ProductWithTags) => {
+    try {
+      setLoadingProductAdd(true)
+      setSavingOrder(true)
+      
+      // Clear search immediately
+      setProductSearchTerm('')
+      setShowProductDropdown(false)
+      setAvailableProducts([])
+      
+      // Calculate the next order position for both custom tags and system tags
+      let nextOrderPosition = 0
+      
+      if (selectedTag && supabase) {
+        // For custom tags
+        try {
+          // Use same logic as addProductToTag function for consistency
+          const { data: existingTags } = await supabase
+            .from('product_tags')
+            .select('order_position')
+            .eq('tag_id', selectedTag.id)
+            .order('order_position', { ascending: false })
+            .limit(1)
+          
+          nextOrderPosition = existingTags && existingTags.length > 0 ? existingTags[0].order_position + 1 : 0
+          console.log(`Tag "${selectedTag.name}" highest order position: ${existingTags?.[0]?.order_position ?? 'none'}, next position will be ${nextOrderPosition}`)
+        } catch (error) {
+          console.error('Error getting current max order position, falling back to count method:', error)
+          // Fallback to count method
+          try {
+            const currentDbProducts = await getProductsInTagOrdered(selectedTag.id)
+            nextOrderPosition = currentDbProducts.length
+          } catch (fallbackError) {
+            console.error('Error with count method, using UI state:', fallbackError)
+            nextOrderPosition = tagProducts.length
+          }
+        }
+      } else if (selectedSystemTag && supabase) {
+        // For system tags, calculate order position from the appropriate field
+        try {
+          let orderField = ''
+          switch (selectedSystemTag.type) {
+            case 'featured':
+              orderField = 'featured_order'
+              break
+            case 'free':
+              orderField = 'free_order'
+              break
+            case 'all':
+              orderField = 'all_order'
+              break
+          }
+          
+          if (orderField) {
+            let query = supabase
+              .from('products')
+              .select(orderField)
+            
+            // Filter by the appropriate flag to only get products already in this system tag
+            switch (selectedSystemTag.type) {
+              case 'featured':
+                query = query.eq('featured', true)
+                break
+              case 'free':
+                query = query.eq('free', true)
+                break
+              case 'all':
+                // For 'all' tag, include all products (no filter needed)
+                break
+            }
+            
+            const { data: existingProducts } = await query
+              .order(orderField, { ascending: false })
+              .limit(1)
+            
+            nextOrderPosition = existingProducts && existingProducts.length > 0 ? 
+              ((existingProducts[0] as any)[orderField] ?? -1) + 1 : 0
+            console.log(`System tag "${selectedSystemTag.name}" highest ${orderField} among ${selectedSystemTag.type} products: ${((existingProducts?.[0] as any)?.[orderField]) ?? 'none'}, next position will be ${nextOrderPosition}`)
+          }
+        } catch (error) {
+          console.error('Error getting current max order position for system tag, using UI state:', error)
+          nextOrderPosition = tagProducts.length
+        }
+      }
+      
+      // Perform the database update without optimistic updates
+      let success = false
+      
+      if (selectedSystemTag) {
+        // Handle system tags (except 'All' which doesn't need special handling for publish/unpublish)
+        if (selectedSystemTag.type !== 'all') {
+          switch (selectedSystemTag.type) {
+            case 'featured':
+              success = await updateProduct(product.id, { 
+                featured: true, 
+                featured_order: nextOrderPosition 
+              })
+              break
+            case 'free':
+              success = await updateProduct(product.id, { 
+                free: true, 
+                free_order: nextOrderPosition 
+              })
+              break
+          }
+        } else {
+          success = true // 'All' tag doesn't need database changes for adding
+        }
+      } else if (selectedTag) {
+        console.log('Adding product with order position:', nextOrderPosition)
+        success = await addProductToTag(product.id, selectedTag.id, nextOrderPosition)
+      }
+      
+      if (success) {
+        console.log('Product added successfully to database')
+        // Refresh the product list to show the updated state
+        if (selectedTag) {
+          const refreshedProducts = await getProductsInTagOrdered(selectedTag.id)
+          setTagProducts(refreshedProducts)
+        } else if (selectedSystemTag) {
+          const refreshedProducts = await getProductsForSystemTag(selectedSystemTag.type)
+          setTagProducts(refreshedProducts)
+        }
+        
+        // Set last saved timestamp for the auto-saved indicator
+        setLastSaved(new Date())
+      } else {
+        console.error('Failed to add product to tag')
+      }
+    } catch (error) {
+      console.error('Error adding product to tag:', error)
+    } finally {
+      setLoadingProductAdd(false)
+      setSavingOrder(false)
     }
   }
 
@@ -1353,6 +1722,7 @@ export default function ProductTagsPage() {
                   setSelectedTag(null)
                   setSelectedSystemTag(null)
                   setTagProducts([])
+                  setRemovingProduct(null)
                 }}
                 className="text-gray-400 hover:text-white"
               >
@@ -1363,6 +1733,119 @@ export default function ProductTagsPage() {
             </div>
 
             <div className="flex-1 p-4 sm:p-6 overflow-y-auto min-h-0">
+              {/* Add Product Section - Show for all tags except "All" */}
+              {(!selectedSystemTag || selectedSystemTag.type !== 'all') && !loadingProducts && (
+                <div className="mb-6 bg-gray-900/30 border border-gray-700 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Product to {selectedTag?.name || selectedSystemTag?.name}
+                  </h3>
+                  
+                  <div className="relative product-search-container">
+                    <input
+                      type="text"
+                      value={productSearchTerm}
+                      onChange={(e) => {
+                        setProductSearchTerm(e.target.value)
+                        setShowProductDropdown(true)
+                      }}
+                      onFocus={() => {
+                        setShowProductDropdown(true)
+                        if (productSearchTerm.trim()) {
+                          fetchAvailableProducts()
+                        }
+                      }}
+                      placeholder="Search products to add..."
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    
+                    {/* Product Dropdown */}
+                    {showProductDropdown && productSearchTerm.trim() && (
+                      <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                        {searchingProducts ? (
+                          <div className="px-4 py-3 text-gray-400 text-center">
+                            <div className="inline-block w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2"></div>
+                            Searching products...
+                          </div>
+                        ) : availableProducts.length > 0 ? (
+                          availableProducts.map((product) => (
+                            <button
+                              key={product.id}
+                              type="button"
+                              onClick={() => handleAddProductToTag(product)}
+                              disabled={loadingProductAdd}
+                              className="w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors flex items-center gap-3 border-b border-gray-700 last:border-b-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {/* Product Icon */}
+                              <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                                {product.icon_url && product.icon_url.startsWith('http') ? (
+                                  <img 
+                                    src={product.icon_url} 
+                                    alt={product.software_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-lg">
+                                    {product.icon_url || '📦'}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Product Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-white truncate">
+                                  {product.software_name}
+                                </div>
+                                <div className="text-xs text-gray-400 truncate">
+                                  {product.slug}
+                                </div>
+                              </div>
+                              
+                              {/* Status Badges */}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {product.featured && (
+                                  <span className="px-1.5 py-0.5 text-xs bg-yellow-600/20 text-yellow-400 rounded">
+                                    Featured
+                                  </span>
+                                )}
+                                {product.free && (
+                                  <span className="px-1.5 py-0.5 text-xs bg-green-600/20 text-green-400 rounded">
+                                    Free
+                                  </span>
+                                )}
+                                {!product.published && (
+                                  <span className="px-1.5 py-0.5 text-xs bg-gray-600/20 text-gray-400 rounded">
+                                    Draft
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Add Button */}
+                              {loadingProductAdd ? (
+                                <div className="flex items-center gap-1 text-blue-400 flex-shrink-0">
+                                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                                  <span className="text-xs">Adding...</span>
+                                </div>
+                              ) : (
+                                <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                              )}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-gray-400 text-center text-sm">
+                            No products found matching "{productSearchTerm}"
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {loadingProducts ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="flex items-center gap-3 text-gray-400">
@@ -1406,6 +1889,11 @@ export default function ProductTagsPage() {
                             getTagColor={getTagColor}
                             isSystemTag={!!selectedSystemTag}
                             systemTagType={selectedSystemTag?.type}
+                            handleRemoveFromTag={handleRemoveFromTag}
+                            handleRemoveFromSystemTag={handleRemoveFromSystemTag}
+                            handleTogglePublish={handleTogglePublish}
+                            togglingPublish={togglingPublish}
+                            removingProduct={removingProduct}
                           />
                         ))}
                       </div>
@@ -1444,6 +1932,7 @@ export default function ProductTagsPage() {
                   setTagProducts([])
                   setLastSaved(null)
                   setSavingOrder(false)
+                  setRemovingProduct(null)
                 }}
                 className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
               >
