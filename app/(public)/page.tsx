@@ -327,54 +327,16 @@ export default function Home() {
           
           {/* Filter Tabs */}
           <div className="relative mb-6 sm:mb-8 max-w-4xl mx-auto h-12 flex items-center">
-            <div 
-              id="filter-container"
-              className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide px-12 sm:px-16 py-2 flex-1 relative z-[150]"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-              }}
-            >
-              {availableFilterTags.map((filter: string) => (
-                <button
-                  key={filter}
-                  onClick={() => handleFilterChange(filter)}
-                  className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 whitespace-nowrap flex-shrink-0 min-h-[40px] flex items-center relative z-[200]"
-                  style={{
-                    backgroundColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.05)',
-                    borderColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.15)',
-                    color: activeFilter === filter ? '#000000' : '#d1d5db',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeFilter !== filter) {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-                      e.currentTarget.style.color = '#ffffff';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeFilter !== filter) {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                      e.currentTarget.style.color = '#d1d5db';
-                    }
-                  }}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-
-            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-black/60 via-black/40 to-transparent z-[1] pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-black/60 via-black/40 to-transparent z-[1] pointer-events-none" />
-
-            <div className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-[100]">
+            {/* Left Arrow Button */}
+            <div className="flex-shrink-0 z-50">
               <button
+                type="button"
                 onClick={() => scrollFilters('left')}
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                style={{ cursor: canScrollLeft ? 'pointer' : 'not-allowed' }}
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 flex items-center justify-center backdrop-blur-sm ${
                   canScrollLeft 
-                    ? 'bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 cursor-pointer' 
-                    : 'bg-transparent border-white/10 text-white/40 cursor-not-allowed'
+                    ? 'bg-black/80 border-white/30 text-white hover:bg-black/90 hover:border-white/50' 
+                    : 'bg-black/40 border-white/10 text-white/40'
                 }`}
                 disabled={!canScrollLeft}
               >
@@ -384,13 +346,79 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-[100]">
+            {/* Filter Container with padding for arrows */}
+            <div className="relative flex-1 mx-2 sm:mx-3 overflow-hidden">
+              <div 
+                id="filter-container"
+                className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide py-2 px-4"
+                style={{
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                }}
+              >
+                {availableFilterTags.map((filter: string) => (
+                  <button
+                    key={filter}
+                    onClick={() => handleFilterChange(filter)}
+                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 whitespace-nowrap flex-shrink-0 min-h-[40px] flex items-center"
+                    style={{
+                      backgroundColor: activeFilter === filter 
+                        ? (filter === 'Free' ? '#22c55e' : 'rgba(255, 255, 255, 1)')
+                        : (filter === 'Free' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.05)'),
+                      borderColor: activeFilter === filter 
+                        ? (filter === 'Free' ? '#22c55e' : 'rgba(255, 255, 255, 1)')
+                        : (filter === 'Free' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255, 255, 255, 0.15)'),
+                      color: activeFilter === filter 
+                        ? (filter === 'Free' ? '#ffffff' : '#000000')
+                        : (filter === 'Free' ? '#22c55e' : '#d1d5db'),
+                    }}
+                    onMouseEnter={(e) => {
+                      if (activeFilter !== filter) {
+                        if (filter === 'Free') {
+                          e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.3)';
+                          e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.6)';
+                          e.currentTarget.style.color = '#22c55e';
+                        } else {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                          e.currentTarget.style.color = '#ffffff';
+                        }
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (activeFilter !== filter) {
+                        if (filter === 'Free') {
+                          e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.2)';
+                          e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+                          e.currentTarget.style.color = '#22c55e';
+                        } else {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                          e.currentTarget.style.color = '#d1d5db';
+                        }
+                      }
+                    }}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+
+              {/* Gradient overlays for faded edges */}
+              <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-black via-black/80 to-transparent pointer-events-none z-10" />
+              <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-black via-black/80 to-transparent pointer-events-none z-10" />
+            </div>
+
+            {/* Right Arrow Button */}
+            <div className="flex-shrink-0 z-50">
               <button
+                type="button"
                 onClick={() => scrollFilters('right')}
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                style={{ cursor: canScrollRight ? 'pointer' : 'not-allowed' }}
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 flex items-center justify-center backdrop-blur-sm ${
                   canScrollRight 
-                    ? 'bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 cursor-pointer' 
-                    : 'bg-transparent border-white/10 text-white/40 cursor-not-allowed'
+                    ? 'bg-black/80 border-white/30 text-white hover:bg-black/90 hover:border-white/50' 
+                    : 'bg-black/40 border-white/10 text-white/40'
                 }`}
                 disabled={!canScrollRight}
               >
