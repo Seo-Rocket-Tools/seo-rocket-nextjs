@@ -14,8 +14,7 @@ import { useAuth, signOut } from '../lib/useAuth'
 import TagManagerModal from './components/modals/TagManagerModal'
 import ProductFormModal, { ProductForm } from './components/modals/ProductFormModal'
 import HeroSection from './components/sections/HeroSection'
-import FilterTabs from './components/sections/FilterTabs'
-import ProductCard from './components/cards/ProductCard'
+import ProductGrid from './components/sections/ProductGrid'
 
 export default function Home() {
   const { user, loading: authLoading, isAdmin } = useAuth()
@@ -1026,62 +1025,35 @@ export default function Home() {
       <HeroSection isAdmin={stableIsAdmin} />
 
       {/* Software Grid Section - Dynamic Layout */}
-      <section 
-        className="px-4 sm:px-6 pb-8 sm:pb-12 relative z-10"
-        onMouseMove={handleGridMouseMove}
-        onMouseLeave={handleGridMouseLeave}
-      >
-        <div className="max-w-7xl mx-auto">
-          {/* Horizontal Scrollable Filter Tabs */}
-          <FilterTabs
-            availableFilterTags={availableFilterTags}
-            activeFilter={activeFilter}
-            savedFilters={savedFilters}
-            isAdmin={stableIsAdmin}
-            onFilterChange={handleFilterChange}
-          />
-
-          {/* Flex Layout - Responsive cards with refined spacing */}
-          <div className="flex flex-row flex-wrap justify-center items-stretch gap-3 sm:gap-4 lg:gap-5 max-w-7xl mx-auto px-2 sm:px-0">
-            {filteredSoftware.map((tool, index) => {
-              // Determine if drag and drop should be enabled
-              const isDragEnabled = stableIsAdmin && !isSavingOrder
-              const isDraggedCard = draggedProductId === tool.id
-              const isDropTarget = !!(draggedProductId && index === filteredSoftware.findIndex(item => item.id === draggedProductId))
-              
-              return (
-                <ProductCard
-                  key={tool.id}
-                  tool={tool}
-                  index={index}
-                  isAdmin={stableIsAdmin}
-                  isDragEnabled={isDragEnabled}
-                  isDraggedCard={isDraggedCard}
-                  isDropTarget={isDropTarget}
-                  isSavingOrder={isSavingOrder}
-                  hoveredCard={hoveredCard}
-                  mousePosition={mousePosition}
-                  productPublishedStatus={productPublishedStatus}
-                  productTagLoading={productTagLoading}
-                  showTagDropdown={showTagDropdown}
-                  availableTags={availableTags}
-                  onDragStart={handleDragStart}
-                  onDragOver={handleDragOver}
-                  onDrop={handleSimpleDrop}
-                  onDragEnd={handleDragEnd}
-                  onMouseMove={handleMouseMove}
-                  onMouseLeave={handleMouseLeave}
-                  onEditClick={openEditModal}
-                  onTogglePublished={handleTogglePublished}
-                  onDeleteClick={handleDeleteProduct}
-                  onToggleProductTag={handleToggleProductTag}
-                  onSetShowTagDropdown={setShowTagDropdown}
-                />
-              )
-            })}
-          </div>
-        </div>
-      </section>
+      <ProductGrid
+        softwareData={filteredSoftware}
+        availableFilterTags={availableFilterTags}
+        activeFilter={activeFilter}
+        savedFilters={savedFilters}
+        isAdmin={stableIsAdmin}
+        draggedProductId={draggedProductId}
+        isSavingOrder={isSavingOrder}
+        hoveredCard={hoveredCard}
+        mousePosition={mousePosition}
+        productPublishedStatus={productPublishedStatus}
+        productTagLoading={productTagLoading}
+        showTagDropdown={showTagDropdown}
+        availableTags={availableTags}
+        onFilterChange={handleFilterChange}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDrop={handleSimpleDrop}
+        onDragEnd={handleDragEnd}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onEditClick={openEditModal}
+        onTogglePublished={handleTogglePublished}
+        onDeleteClick={handleDeleteProduct}
+        onToggleProductTag={handleToggleProductTag}
+        onSetShowTagDropdown={setShowTagDropdown}
+        onGridMouseMove={handleGridMouseMove}
+        onGridMouseLeave={handleGridMouseLeave}
+      />
 
       {/* Tag Manager Modal */}
       {stableIsAdmin && showTagManager && (
