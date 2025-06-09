@@ -14,6 +14,8 @@ import { useAuth, signOut } from '../lib/useAuth'
 import Link from 'next/link'
 import TagManagerModal from './components/modals/TagManagerModal'
 import ProductFormModal, { ProductForm } from './components/modals/ProductFormModal'
+import HeroSection from './components/sections/HeroSection'
+import FilterTabs from './components/sections/FilterTabs'
 
 export default function Home() {
   const { user, loading: authLoading, isAdmin } = useAuth()
@@ -40,8 +42,6 @@ export default function Home() {
   const [filteredSoftware, setFilteredSoftware] = useState<SoftwareItem[]>([])
   const [activeFilter, setActiveFilter] = useState<string>('Featured')
   const [isLoading, setIsLoading] = useState(true)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
   const [realtimeStatus, setRealtimeStatus] = useState<{
     isConnected: boolean
     error: string | null
@@ -473,87 +473,6 @@ export default function Home() {
     }
   }
 
-  // Handle filter scroll
-  const scrollFilters = (direction: 'left' | 'right') => {
-    const container = document.getElementById('filter-container')
-    if (!container) return
-    
-    const scrollAmount = 200
-    const newScrollLeft = direction === 'left' 
-      ? Math.max(0, container.scrollLeft - scrollAmount)
-      : Math.min(container.scrollWidth - container.clientWidth, container.scrollLeft + scrollAmount)
-    
-    container.scrollTo({
-      left: newScrollLeft,
-      behavior: 'smooth'
-    })
-    
-    // Update scroll state after a brief delay to account for smooth scrolling
-    setTimeout(() => updateScrollState(), 300)
-  }
-
-  // Update scroll state
-  const updateScrollState = () => {
-    const container = document.getElementById('filter-container')
-    if (!container) return
-    
-    const isScrollable = container.scrollWidth > container.clientWidth
-    const isAtStart = container.scrollLeft <= 1 // Small threshold for floating point precision
-    const isAtEnd = container.scrollLeft >= container.scrollWidth - container.clientWidth - 1
-    
-    setCanScrollLeft(isScrollable && !isAtStart)
-    setCanScrollRight(isScrollable && !isAtEnd)
-    
-    console.log('Scroll State:', {
-      scrollLeft: container.scrollLeft,
-      scrollWidth: container.scrollWidth,
-      clientWidth: container.clientWidth,
-      isScrollable,
-      isAtStart,
-      isAtEnd,
-      canScrollLeft: isScrollable && !isAtStart,
-      canScrollRight: isScrollable && !isAtEnd
-    })
-  }
-
-  // Check scroll state on mount and resize
-  useEffect(() => {
-    if (!softwareData) return
-    
-    const container = document.getElementById('filter-container')
-    if (!container) return
-    
-    const handleScroll = () => {
-      console.log('Scroll event triggered')
-      updateScrollState()
-    }
-    
-    const handleResize = () => {
-      console.log('Resize event triggered')
-      updateScrollState()
-    }
-    
-    // Add event listeners
-    container.addEventListener('scroll', handleScroll, { passive: true })
-    window.addEventListener('resize', handleResize)
-    
-    // Initial check with multiple attempts to ensure container is ready
-    const checkInitialState = () => {
-      console.log('Checking initial scroll state')
-      updateScrollState()
-    }
-    
-    // Check immediately and with delays
-    checkInitialState()
-    setTimeout(checkInitialState, 100)
-    setTimeout(checkInitialState, 500)
-    setTimeout(checkInitialState, 1000)
-    
-    return () => {
-      container.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [softwareData])
 
   // Admin functions
   const handleLogout = async () => {
@@ -1136,31 +1055,7 @@ export default function Home() {
       </div>
 
       {/* Header Section */}
-      <section className={`px-4 sm:px-6 py-8 sm:py-12 relative z-10 ${stableIsAdmin ? 'pt-20' : ''}`}>
-        <div className="max-w-6xl mx-auto text-center space-y-6 sm:space-y-8">
-          {/* Logo */}
-          <div className="mb-6 sm:mb-8">
-            <img
-              src="/seo-rocket-light.svg"
-              alt="SEO Rocket"
-              className="mx-auto w-[160px] sm:w-[200px] h-[48px] sm:h-[60px] object-contain"
-            />
-          </div>
-
-          {/* Main Headline */}
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-4 sm:mb-6">
-            Automate Your
-            <span className="block text-gray-400">Digital Workflow</span>
-          </h1>
-
-          {/* Subheadline */}
-          <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed mb-12 sm:mb-16 px-4 sm:px-0">
-            Powerful web apps, Chrome extensions, and WordPress plugins designed for 
-            <span className="text-white font-medium"> digital marketing agencies</span> and 
-            <span className="text-white font-medium"> virtual assistants</span> who demand efficiency.
-          </p>
-        </div>
-      </section>
+      <HeroSection isAdmin={stableIsAdmin} />
 
       {/* Software Grid Section - Dynamic Layout */}
       <section 
@@ -1170,94 +1065,13 @@ export default function Home() {
       >
         <div className="max-w-7xl mx-auto">
           {/* Horizontal Scrollable Filter Tabs */}
-          <div className="relative mb-6 sm:mb-8 max-w-4xl mx-auto h-12 flex items-center">
-            {/* Scrollable Filter Container */}
-            <div 
-              id="filter-container"
-              className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide px-12 sm:px-16 py-2 flex-1"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-              }}
-            >
-              {availableFilterTags.map((filter: string) => (
-                <button
-                  key={filter}
-                  onClick={() => handleFilterChange(filter)}
-                  className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 whitespace-nowrap flex-shrink-0 min-h-[40px] flex items-center relative"
-                  style={{
-                    backgroundColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.05)',
-                    borderColor: activeFilter === filter ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.15)',
-                    color: activeFilter === filter ? '#000000' : '#d1d5db',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeFilter !== filter) {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-                      e.currentTarget.style.color = '#ffffff';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeFilter !== filter) {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                      e.currentTarget.style.color = '#d1d5db';
-                    }
-                  }}
-                >
-                  {filter}
-                  {/* Saved order indicator */}
-                  {stableIsAdmin && savedFilters.has(filter) && (
-                    <span className="ml-1.5 w-1.5 h-1.5 bg-green-400 rounded-full" title="Custom order saved" />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Gradient Overlays - Lower z-index */}
-            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-black via-black/80 to-transparent z-[1] pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-black via-black/80 to-transparent z-[1] pointer-events-none" />
-
-            {/* Left Arrow - Highest z-index */}
-            <div className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-[100]">
-              <button
-                onClick={() => {
-                  console.log('Left arrow clicked, canScrollLeft:', canScrollLeft)
-                  scrollFilters('left')
-                }}
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
-                  canScrollLeft 
-                    ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 cursor-pointer' 
-                    : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
-                }`}
-                disabled={!canScrollLeft}
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Right Arrow - Highest z-index */}
-            <div className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-[100]">
-              <button
-                onClick={() => {
-                  console.log('Right arrow clicked, canScrollRight:', canScrollRight)
-                  scrollFilters('right')
-                }}
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 flex items-center justify-center ${
-                  canScrollRight 
-                    ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 cursor-pointer' 
-                    : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
-                }`}
-                disabled={!canScrollRight}
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
+          <FilterTabs
+            availableFilterTags={availableFilterTags}
+            activeFilter={activeFilter}
+            savedFilters={savedFilters}
+            isAdmin={stableIsAdmin}
+            onFilterChange={handleFilterChange}
+          />
 
           {/* Flex Layout - Responsive cards with refined spacing */}
           <div className="flex flex-row flex-wrap justify-center items-stretch gap-3 sm:gap-4 lg:gap-5 max-w-7xl mx-auto px-2 sm:px-0 transition-all duration-300">
