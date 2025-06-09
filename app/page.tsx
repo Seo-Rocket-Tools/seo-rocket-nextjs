@@ -15,6 +15,8 @@ import TagManagerModal from './components/modals/TagManagerModal'
 import ProductFormModal, { ProductForm } from './components/modals/ProductFormModal'
 import HeroSection from './components/sections/HeroSection'
 import ProductGrid from './components/sections/ProductGrid'
+import AdminBar from './components/layouts/AdminBar'
+import BackgroundEffects from './components/effects/BackgroundEffects'
 
 export default function Home() {
   const { user, loading: authLoading, isAdmin } = useAuth()
@@ -960,66 +962,19 @@ export default function Home() {
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Admin Bar */}
       {stableIsAdmin && (
-        <div className="fixed top-0 left-0 right-0 z-[9999] bg-gray-900/95 backdrop-blur-md border-b border-gray-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-sm text-gray-300">Admin Mode</span>
-              </div>
-              
-              <button
-                onClick={() => setShowTagManager(true)}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-full transition-colors"
-              >
-                Tag Manager
-              </button>
-              
-              <button
-                onClick={() => setShowAddProduct(true)}
-                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-full transition-colors"
-              >
-                + Add Product
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-400">Welcome, {user?.email}</span>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
+        <AdminBar
+          userEmail={user?.email}
+          onShowTagManager={() => setShowTagManager(true)}
+          onShowAddProduct={() => setShowAddProduct(true)}
+          onLogout={handleLogout}
+        />
       )}
 
       {/* Background Glow Effect */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Single Top-Right Purple Glow - Half Cut Off */}
-        <div 
-          className="absolute w-[800px] h-[800px] rounded-full opacity-40 blur-3xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(147, 51, 234, 0.6) 0%, rgba(139, 69, 219, 0.3) 40%, transparent 70%)',
-            top: '-400px',
-            right: '-400px',
-          }}
-        />
-        
-        {/* Interactive Grid Glow - Follows Mouse */}
-        <div 
-          className="absolute w-[600px] h-[600px] rounded-full blur-3xl transition-all duration-300 ease-out"
-          style={{
-            background: 'radial-gradient(circle, rgba(168, 85, 247, 0.5) 0%, rgba(147, 51, 234, 0.2) 50%, transparent 70%)',
-            opacity: isGridHovered ? 0.2 : 0,
-            left: isGridHovered ? `${gridMousePosition.x - 300}px` : '10%',
-            top: isGridHovered ? `${gridMousePosition.y - 300 + 600}px` : '60%',
-            transform: 'translate(0, 0)',
-          }}
-        />
-      </div>
+      <BackgroundEffects 
+        isGridHovered={isGridHovered}
+        gridMousePosition={gridMousePosition}
+      />
 
       {/* Header Section */}
       <HeroSection isAdmin={stableIsAdmin} />
