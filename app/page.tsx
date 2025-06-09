@@ -1,16 +1,11 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import { 
-  loadSoftwareData, 
-  SoftwareItem, 
-  SoftwareData,
-  getSoftwareByTag, 
-  getFeaturedSoftware
-} from '../data/software-loader'
+import { SoftwareItem, getFeaturedSoftware, getSoftwareByTag } from '../data/software-loader'
 import { useRealtime } from '../lib/useRealtime'
-import { Tag, supabase, getAvailableTagsFromProducts } from '../lib/supabase'
+import { Tag, supabase } from '../lib/supabase'
 import { useAuth, signOut } from '../lib/useAuth'
+import { useProductData } from './hooks/useProductData'
 import TagManagerModal from './components/modals/TagManagerModal'
 import ProductFormModal, { ProductForm } from './components/modals/ProductFormModal'
 import HeroSection from './components/sections/HeroSection'
@@ -36,14 +31,31 @@ export default function Home() {
     console.log('Auth state changed:', { user: !!user, authLoading, isAdmin, stableIsAdmin })
   }, [user, authLoading, isAdmin, stableIsAdmin])
 
+  // Simple drag and drop state - defined before useProductData
+  const [draggedProductId, setDraggedProductId] = useState<string | null>(null)
+  const [isSavingOrder, setIsSavingOrder] = useState(false)
+  const [disableRealtimeRefresh, setDisableRealtimeRefresh] = useState(false)
+
+  // Use product data hook
+  const {
+    softwareData,
+    filteredSoftware,
+    setFilteredSoftware,
+    activeFilter,
+    isLoading,
+    availableFilterTags,
+    handleFilterChange,
+    refreshData
+  } = useProductData({
+    isAdmin: stableIsAdmin,
+    authLoading,
+    disableRealtimeRefresh
+  })
+
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [isGridHovered, setIsGridHovered] = useState(false)
   const [gridMousePosition, setGridMousePosition] = useState({ x: 0, y: 0 })
-  const [softwareData, setSoftwareData] = useState<SoftwareData | null>(null)
-  const [filteredSoftware, setFilteredSoftware] = useState<SoftwareItem[]>([])
-  const [activeFilter, setActiveFilter] = useState<string>('Featured')
-  const [isLoading, setIsLoading] = useState(true)
 
   // Admin state
   const [showTagManager, setShowTagManager] = useState(false)
@@ -59,10 +71,6 @@ export default function Home() {
   const [editProductLoading, setEditProductLoading] = useState(false)
   const [addProductLoading, setAddProductLoading] = useState(false)
 
-  // Simple drag and drop state
-  const [draggedProductId, setDraggedProductId] = useState<string | null>(null)
-  const [isSavingOrder, setIsSavingOrder] = useState(false)
-  const [disableRealtimeRefresh, setDisableRealtimeRefresh] = useState(false)
 
   // Simple drag handlers
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: SoftwareItem) => {
@@ -195,8 +203,7 @@ export default function Home() {
     slug: ''
   })
 
-  // State for available filter tags
-  const [availableFilterTags, setAvailableFilterTags] = useState<string[]>(['Featured', 'Free', 'All'])
+  // State for saved filters
   const [savedFilters, setSavedFilters] = useState<Set<string>>(new Set())
 
   // Load saved filters from localStorage on mount
@@ -235,65 +242,6 @@ export default function Home() {
     }
   }, [stableIsAdmin])
 
-  // Helper function to get available tags
-  const getAvailableTagsForData = async (includeUnpublished: boolean = false): Promise<string[]> => {
-    try {
-      return await getAvailableTagsFromProducts(includeUnpublished)
-    } catch (error) {
-      console.error('Error getting available tags:', error)
-      return ['Featured', 'Free', 'All']
-    }
-  }
-
-  // Load available filter tags
-  const loadAvailableFilterTags = useCallback(async () => {
-    try {
-      const tags = await getAvailableTagsForData(stableIsAdmin)
-      setAvailableFilterTags(tags)
-    } catch (error) {
-      console.error('Error loading available filter tags:', error)
-      setAvailableFilterTags(['Featured', 'Free', 'All'])
-    }
-  }, [stableIsAdmin])
-
-  // Realtime data refresh function
-  const refreshData = useCallback(async () => {
-    // Don't refresh data if auth is still loading
-    if (authLoading) {
-      console.log('Auth still loading, skipping realtime refresh...')
-      return
-    }
-    
-    // Don't refresh if realtime refresh is temporarily disabled
-    if (disableRealtimeRefresh) {
-      console.log('Realtime refresh temporarily disabled, skipping...')
-      return
-    }
-    
-    try {
-      console.log('Refreshing data due to realtime update with admin status:', stableIsAdmin)
-      const data = await loadSoftwareData()
-      setSoftwareData(data)
-      
-      // Also refresh available tags
-      await loadAvailableFilterTags()
-      
-      // Update filtered software based on current filter
-      if (activeFilter === 'Featured') {
-        const featuredResults = getFeaturedSoftware(data, stableIsAdmin)
-        console.log('Setting featured software with admin status:', stableIsAdmin, 'Results:', featuredResults.length, 'items')
-        setFilteredSoftware(featuredResults)
-      } else {
-        const tagResults = getSoftwareByTag(data, activeFilter, stableIsAdmin)
-        console.log('Setting tag software for', activeFilter, 'with admin status:', stableIsAdmin, 'Results:', tagResults.length, 'items')
-        setFilteredSoftware(tagResults)
-      }
-      
-      console.log('Data refreshed successfully')
-    } catch (error) {
-      console.error('Failed to refresh software data:', error)
-    }
-  }, [activeFilter, stableIsAdmin, authLoading, loadAvailableFilterTags, disableRealtimeRefresh])
 
   // Handle realtime product changes
   const handleProductChange = useCallback((payload: any) => {
@@ -320,55 +268,28 @@ export default function Home() {
   })
 
 
-  // Load software data on component mount
+  // Load published status for admin
   useEffect(() => {
-    async function loadData() {
-      // Don't load data until auth state is resolved
-      if (authLoading) {
-        console.log('Auth still loading, skipping data load...')
-        return
-      }
-      
-      try {
-        console.log('Loading software data with admin status:', stableIsAdmin)
-        const data = await loadSoftwareData()
-        setSoftwareData(data)
+    async function loadPublishedStatus() {
+      if (stableIsAdmin && supabase && !authLoading) {
+        console.log('Loading published status for admin...')
+        const { data: products } = await supabase
+          .from('products')
+          .select('slug, published')
         
-        // Load available filter tags
-        await loadAvailableFilterTags()
-        
-        const initialFeatured = getFeaturedSoftware(data, stableIsAdmin)
-        console.log('Initial load - setting featured software with admin status:', stableIsAdmin, 'Results:', initialFeatured.length, 'items')
-        setFilteredSoftware(initialFeatured)
-        
-        // Load published status for admin
-        if (stableIsAdmin && supabase) {
-          console.log('Loading published status for admin...')
-          const { data: products } = await supabase
-            .from('products')
-            .select('slug, published')
-          
-          if (products) {
-            const statusMap: Record<string, boolean> = {}
-            products.forEach(product => {
-              statusMap[product.slug] = product.published
-            })
-            setProductPublishedStatus(statusMap)
-            console.log('Published status loaded:', statusMap)
-          }
+        if (products) {
+          const statusMap: Record<string, boolean> = {}
+          products.forEach(product => {
+            statusMap[product.slug] = product.published
+          })
+          setProductPublishedStatus(statusMap)
+          console.log('Published status loaded:', statusMap)
         }
-        
-        setIsLoading(false)
-      } catch (error) {
-        console.error('Failed to load software data:', error)
-        setIsLoading(false)
       }
     }
     
-    // Add a small delay to ensure auth state is stable
-    const timer = setTimeout(loadData, 100)
-    return () => clearTimeout(timer)
-  }, [stableIsAdmin, authLoading, loadAvailableFilterTags])
+    loadPublishedStatus()
+  }, [stableIsAdmin, authLoading])
 
   // Load tags when user becomes admin
   useEffect(() => {
@@ -377,95 +298,7 @@ export default function Home() {
     }
   }, [stableIsAdmin, authLoading, loadTags])
 
-  // Reload data when page gains focus (e.g., coming back from admin panel)
-  useEffect(() => {
-    let focusTimer: NodeJS.Timeout
-    let intervalTimer: NodeJS.Timeout
-    
-    const handleFocus = async () => {
-      // Don't reload data if auth is still loading
-      if (authLoading) {
-        console.log('Auth still loading, skipping focus reload...')
-        return
-      }
-      
-      // Don't reload if realtime refresh is disabled (e.g., during drag operations)
-      if (disableRealtimeRefresh) {
-        console.log('Realtime refresh disabled, skipping focus reload...')
-        return
-      }
-      
-      // Debounce focus events
-      clearTimeout(focusTimer)
-      focusTimer = setTimeout(async () => {
-        try {
-          console.log('Page focused, reloading software data with admin status:', stableIsAdmin)
-          const data = await loadSoftwareData()
-          
-          // Load available filter tags
-          await loadAvailableFilterTags()
-          console.log('Loaded data and available tags')
-          
-          setSoftwareData(data)
-          // Maintain current filter when refreshing data
-          if (activeFilter === 'Featured') {
-            const focusFeatured = getFeaturedSoftware(data, stableIsAdmin)
-            console.log('Focus reload - setting featured software with admin status:', stableIsAdmin, 'Results:', focusFeatured.length, 'items')
-            setFilteredSoftware(focusFeatured)
-          } else {
-            const focusTag = getSoftwareByTag(data, activeFilter, stableIsAdmin)
-            console.log('Focus reload - setting tag software for', activeFilter, 'with admin status:', stableIsAdmin, 'Results:', focusTag.length, 'items')
-            setFilteredSoftware(focusTag)
-          }
-        } catch (error) {
-          console.error('Failed to reload software data:', error)
-        }
-      }, 1000)
-    }
 
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'seo-rocket-software-data') {
-        console.log('localStorage data changed, reloading...')
-        handleFocus()
-      }
-    }
-
-    // Only set up listeners if auth is resolved
-    if (!authLoading) {
-      window.addEventListener('focus', handleFocus)
-      window.addEventListener('storage', handleStorageChange)
-      
-      // Also check for changes periodically (every 10 seconds instead of 5)
-      intervalTimer = setInterval(() => {
-        if (document.hasFocus() && !disableRealtimeRefresh) {
-          handleFocus()
-        }
-      }, 10000)
-
-      return () => {
-        window.removeEventListener('focus', handleFocus)
-        window.removeEventListener('storage', handleStorageChange)
-        clearTimeout(focusTimer)
-        clearInterval(intervalTimer)
-      }
-    }
-  }, [activeFilter, stableIsAdmin, authLoading, loadAvailableFilterTags, disableRealtimeRefresh])
-
-  // Handle filter changes
-  const handleFilterChange = (filter: string) => {
-    if (!softwareData || authLoading) return
-    setActiveFilter(filter)
-    
-    if (filter === 'Featured') {
-      const featuredResults = getFeaturedSoftware(softwareData, stableIsAdmin)
-      console.log('Filter change - setting featured software with admin status:', stableIsAdmin, 'Results:', featuredResults.length, 'items')
-      setFilteredSoftware(featuredResults)
-    } else {
-      const tagResults = getSoftwareByTag(softwareData, filter, stableIsAdmin)
-      console.log('Filter change - setting tag software for', filter, 'with admin status:', stableIsAdmin, 'Results:', tagResults.length, 'items')
-      setFilteredSoftware(tagResults)
-    }
-  }
 
 
   // Admin functions
