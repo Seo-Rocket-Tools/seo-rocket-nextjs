@@ -13,6 +13,7 @@ import { Product, Tag, supabase, getAvailableTagsFromProducts } from '../lib/sup
 import { useAuth, signOut } from '../lib/useAuth'
 import Link from 'next/link'
 import TagManagerModal from './components/modals/TagManagerModal'
+import ProductFormModal, { ProductForm } from './components/modals/ProductFormModal'
 
 export default function Home() {
   const { user, loading: authLoading, isAdmin } = useAuth()
@@ -628,6 +629,10 @@ export default function Home() {
       priority: 100,
       slug: ''
     })
+  }
+
+  const handleProductFormChange = (updates: Partial<ProductForm>) => {
+    setProductForm(prev => ({ ...prev, ...updates }))
   }
 
   const handleAddProduct = async () => {
@@ -1657,209 +1662,27 @@ export default function Home() {
       )}
 
       {/* Add/Edit Product Modal */}
-      {stableIsAdmin && (showAddProduct || showEditProduct) && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">
-                  {showAddProduct ? 'Add New Product' : 'Edit Product'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowAddProduct(false)
-                    setShowEditProduct(null)
-                    resetProductForm()
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <form className="space-y-4" onSubmit={(e) => {
-                e.preventDefault()
-                if (showEditProduct) {
-                  handleEditProduct(showEditProduct)
-                } else {
-                  handleAddProduct()
-                }
-              }}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Software Name *</label>
-                    <input
-                      type="text"
-                      value={productForm.software_name}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, software_name: e.target.value }))}
-                      required
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Emoji</label>
-                    <input
-                      type="text"
-                      value={productForm.emoji}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, emoji: e.target.value }))}
-                      placeholder="🚀"
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                  <textarea
-                    value={productForm.description}
-                    onChange={(e) => setProductForm(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">URL</label>
-                    <input
-                      type="url"
-                      value={productForm.url}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, url: e.target.value }))}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Slug</label>
-                    <input
-                      type="text"
-                      value={productForm.slug}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, slug: e.target.value }))}
-                      placeholder="auto-generated from name"
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Tag Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Tags</label>
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2 p-3 bg-gray-800 border border-gray-700 rounded-lg min-h-[44px]">
-                      {productForm.tags.length === 0 ? (
-                        <span className="text-gray-500 text-sm">No tags selected</span>
-                      ) : (
-                        productForm.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                          >
-                            {tag}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setProductForm(prev => ({
-                                  ...prev,
-                                  tags: prev.tags.filter((_, i) => i !== index)
-                                }))
-                              }}
-                              className="ml-1 text-blue-300 hover:text-blue-100"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                      {availableTags
-                        .filter(tag => !productForm.tags.includes(tag.name))
-                        .map((tag) => (
-                          <button
-                            key={tag.id}
-                            type="button"
-                            onClick={() => {
-                              setProductForm(prev => ({
-                                ...prev,
-                                tags: [...prev.tags, tag.name]
-                              }))
-                            }}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-700/60 hover:bg-gray-600 text-gray-300 border border-gray-600 transition-colors"
-                          >
-                            {tag.name}
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={productForm.published}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, published: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-300">Published</span>
-                  </label>
-
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={productForm.featured}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, featured: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-300">Featured</span>
-                  </label>
-
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={productForm.free}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, free: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-300">Free</span>
-                  </label>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddProduct(false)
-                      setShowEditProduct(null)
-                      resetProductForm()
-                    }}
-                    disabled={editProductLoading || addProductLoading}
-                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={editProductLoading || addProductLoading}
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    {(editProductLoading || addProductLoading) && (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    )}
-                    {showAddProduct 
-                      ? (addProductLoading ? 'Adding Product...' : 'Add Product')
-                      : (editProductLoading ? 'Updating Product...' : 'Update Product')
-                    }
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <ProductFormModal
+        show={stableIsAdmin && (!!showAddProduct || !!showEditProduct)}
+        mode={showAddProduct ? 'add' : 'edit'}
+        productForm={productForm}
+        availableTags={availableTags}
+        isLoading={showAddProduct ? addProductLoading : editProductLoading}
+        onClose={() => {
+          setShowAddProduct(false)
+          setShowEditProduct(null)
+          resetProductForm()
+        }}
+        onFormChange={handleProductFormChange}
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (showEditProduct) {
+            handleEditProduct(showEditProduct)
+          } else {
+            handleAddProduct()
+          }
+        }}
+      />
 
       {/* Success Notification */}
       {orderSaveSuccess && (
