@@ -478,13 +478,9 @@ export default function Home() {
                   )}
 
                   {/* Main content */}
-                  <div 
+                  <Link 
+                    href={tool.url && tool.url !== '#' ? tool.url : '#'}
                     className="flex flex-col h-full cursor-pointer"
-                    onClick={() => {
-                      if (tool.url && tool.url !== '#') {
-                        window.open(tool.url, '_blank', 'noopener,noreferrer')
-                      }
-                    }}
                   >
                     {/* Icon */}
                     <div className="text-3xl sm:text-4xl mb-3 sm:mb-4 transition-all duration-300">
@@ -542,7 +538,7 @@ export default function Home() {
                         </span>
                       ))}
                     </div>
-                  </div>
+                  </Link>
                 </div>
               )
             })}
