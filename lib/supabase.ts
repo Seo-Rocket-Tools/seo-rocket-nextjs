@@ -409,20 +409,43 @@ export async function getProductsWithTagsByTag(tagName: string, includeUnpublish
     return []
   }
 
+  // First, get the product IDs that have the specific tag, along with their order positions
+  const { data: productTagsData, error: productTagsError } = await supabase
+    .from('product_tags')
+    .select(`
+      product_id,
+      order_position,
+      tag:tags!inner(name)
+    `)
+    .eq('tag.name', tagName)
+    .order('order_position', { ascending: true })
 
+  if (productTagsError) {
+    console.error('Error fetching product_tags for tag:', productTagsError)
+    return []
+  }
 
+  if (!productTagsData || productTagsData.length === 0) {
+    return []
+  }
+
+  // Extract product IDs and create a map of product_id -> order_position
+  const productIds = productTagsData.map(pt => pt.product_id)
+  const orderPositions = new Map(productTagsData.map(pt => [pt.product_id, pt.order_position]))
+
+  // Now fetch the full products with ALL their tags
   const query = supabase
     .from('products')
     .select(`
       *,
-      product_tags!inner(
+      product_tags(
         id,
         tag_id,
         order_position,
-        tag:tags!inner(id, name)
+        tag:tags(id, name)
       )
     `)
-    .eq('product_tags.tag.name', tagName)
+    .in('id', productIds)
 
   if (!includeUnpublished) {
     query.eq('published', true)
@@ -430,23 +453,19 @@ export async function getProductsWithTagsByTag(tagName: string, includeUnpublish
 
   const { data, error } = await query
 
-
-
   if (error) {
-    console.error('Error fetching products with tags:', error)
+    console.error('Error fetching products with all tags:', error)
     return []
   }
 
   if (!data) return []
 
-  // Sort by order_position after fetching since we can't use dot notation in Supabase order()
+  // Sort by the order_position from the specific tag we're filtering by
   const sortedData = data.sort((a, b) => {
-    const aPosition = a.product_tags[0]?.order_position ?? 999
-    const bPosition = b.product_tags[0]?.order_position ?? 999
+    const aPosition = orderPositions.get(a.id) ?? 999
+    const bPosition = orderPositions.get(b.id) ?? 999
     return aPosition - bPosition
   })
-
-
 
   return sortedData
 }
