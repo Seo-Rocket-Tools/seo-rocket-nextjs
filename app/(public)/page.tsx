@@ -21,6 +21,7 @@ export default function Home() {
   const [filteredSoftware, setFilteredSoftware] = useState<SoftwareItem[]>([])
   const [activeFilter, setActiveFilter] = useState<string>('Featured')
   const [isLoading, setIsLoading] = useState(true)
+  const [isFiltering, setIsFiltering] = useState(false)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
   const [realtimeStatus, setRealtimeStatus] = useState<{
@@ -121,15 +122,26 @@ export default function Home() {
   }, [activeFilter])
 
   const handleFilterChange = async (filter: string) => {
+    if (isFiltering) return // Prevent multiple concurrent filter operations
+    
+    setIsFiltering(true)
     setActiveFilter(filter)
-    if (softwareData) {
-      if (filter === 'Featured') {
-        const featuredResults = getFeaturedSoftware(softwareData, false)
-        setFilteredSoftware(featuredResults)
-      } else {
-        const tagResults = await getSoftwareByTag(softwareData, filter, false)
-        setFilteredSoftware(tagResults)
+    
+    try {
+      if (softwareData) {
+        if (filter === 'Featured') {
+          const featuredResults = getFeaturedSoftware(softwareData, false)
+          setFilteredSoftware(featuredResults)
+        } else {
+          const tagResults = await getSoftwareByTag(softwareData, filter, false)
+          setFilteredSoftware(tagResults)
+        }
       }
+    } finally {
+      // Add a small delay to ensure users see the loading state
+      setTimeout(() => {
+        setIsFiltering(false)
+      }, 200)
     }
   }
 
@@ -269,6 +281,27 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Shimmer Animation Styles */}
+      <style jsx>{`
+        .shimmer {
+          background: linear-gradient(90deg, 
+            rgba(255, 255, 255, 0.1) 25%, 
+            rgba(255, 255, 255, 0.15) 50%, 
+            rgba(255, 255, 255, 0.1) 75%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+      `}</style>
       {/* Background Glow Effect */}
       <div className="absolute inset-0 pointer-events-none">
         <div 
@@ -360,7 +393,10 @@ export default function Home() {
                   <button
                     key={filter}
                     onClick={() => handleFilterChange(filter)}
-                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 whitespace-nowrap flex-shrink-0 min-h-[40px] flex items-center"
+                    disabled={isFiltering}
+                    className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-full border transition-all duration-300 whitespace-nowrap flex-shrink-0 min-h-[40px] flex items-center gap-2 ${
+                      isFiltering ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-105'
+                    }`}
                     style={{
                       backgroundColor: activeFilter === filter 
                         ? (filter === 'Free' ? '#22c55e' : 'rgba(255, 255, 255, 1)')
@@ -435,7 +471,41 @@ export default function Home() {
             onMouseMove={handleGridMouseMove}
             onMouseLeave={handleGridMouseLeave}
           >
-            {filteredSoftware.map((tool, index) => {
+            {isFiltering ? (
+              // Skeleton Loading Cards
+              Array.from({ length: 8 }).map((_, index) => (
+                <div 
+                  key={`skeleton-${index}`}
+                  className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)] xl:w-[calc(25%-0.9375rem)] min-w-[280px] max-w-[320px] rounded-lg p-4 sm:p-6 relative flex flex-col animate-pulse"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  {/* Skeleton Icon */}
+                  <div className="w-10 h-10 bg-white/10 rounded-lg mb-3 sm:mb-4 shimmer"></div>
+                  
+                  {/* Skeleton Title */}
+                  <div className="mb-2 sm:mb-3">
+                    <div className="h-6 bg-white/10 rounded w-3/4 mb-1 shimmer"></div>
+                  </div>
+
+                  {/* Skeleton Description */}
+                  <div className="space-y-2 mb-3 sm:mb-4 flex-grow">
+                    <div className="h-3 bg-white/10 rounded w-full shimmer"></div>
+                    <div className="h-3 bg-white/10 rounded w-5/6 shimmer"></div>
+                    <div className="h-3 bg-white/10 rounded w-4/6 shimmer"></div>
+                  </div>
+                  
+                  {/* Skeleton Tags */}
+                  <div className="flex flex-wrap gap-2 mt-auto">
+                    <div className="h-6 bg-white/10 rounded-full w-16 shimmer"></div>
+                    <div className="h-6 bg-white/10 rounded-full w-20 shimmer"></div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              filteredSoftware.map((tool, index) => {
               return (
                 <div 
                   key={tool.id}
@@ -541,7 +611,8 @@ export default function Home() {
                   </Link>
                 </div>
               )
-            })}
+            })
+            )}
           </div>
         </div>
       </section>
