@@ -7,6 +7,12 @@ export default function Footer() {
         {/* Footer Links */}
         <div className="flex flex-wrap justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
           <a 
+            href="/sitemap.html"
+            className="text-gray-500 hover:text-gray-300 transition-colors duration-300 text-xs sm:text-sm font-medium"
+          >
+            Sitemap
+          </a>
+          <a 
             href="https://seorocket.notion.site/seorocket/SEO-Rocket-Refund-Policy-cf90d3f98cdf4b0da5fe3e58bb75405a"
             target="_blank"
             rel="noopener noreferrer"
