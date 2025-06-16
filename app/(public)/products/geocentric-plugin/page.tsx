@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import Head from 'next/head'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import './critical.css'
@@ -138,36 +137,36 @@ export default function GeocentricPluginPage() {
   // FAQ data
   const faqs = [
     {
-      question: "What specific location data does the Geocentric Plugin automatically pull?",
-      answer: "The plugin pulls 7 comprehensive data types for any location: real-time local weather conditions, detailed area history and population demographics, neighborhood breakdowns with local insights, curated things to do and attractions, public transportation including bus stops and routes, turn-by-turn driving directions from competitor locations to your business, and interactive local maps. All data is sourced from Google and other authoritative APIs to ensure accuracy and reliability."
+      question: "What is Geocentric Plugin?",
+      answer: "Geocentric Plugin is a WordPress tool that lets you choose any city or town and instantly embed hyper-relevant location data from Google: local weather, history & population, neighborhoods, things to do, bus stops, driving directions, and local maps. It creates location pages that Google loves for maximum SEO impact by automatically pulling comprehensive data from authoritative sources, eliminating manual research and content creation."
     },
     {
-      question: "How quickly will I see SEO improvements after installing the plugin?",
-      answer: "Most users see initial improvements within 1-2 weeks, with significant ranking boosts typically occurring within 30 days. The embedded location data creates immediate relevance signals that Google recognizes, helping establish your site's local authority. However, results can vary based on competition level, existing site authority, and how many location pages you create."
+      question: "What are the technical requirements for Geocentric Plugin?",
+      answer: "Geocentric Plugin requires: WordPress version 6.2 or higher, PHP version 7.2 or higher, and has been tested up to WordPress 6.8. No special hosting requirements - any WordPress website can run the plugin. Current plugin version is 3.0.4 (released August 10, 2023). No additional server configurations or API keys needed for basic functionality."
     },
     {
-      question: "Is the plugin compatible with my website platform?",
-      answer: "The Geocentric Plugin is designed exclusively for WordPress websites. It integrates seamlessly with WordPress through shortcodes and widgets, ensuring optimal performance and compatibility. For non-WordPress sites, you'll need to migrate to WordPress or consider our other SEO tools that may be platform-agnostic."
+      question: "How do I set up Geocentric Plugin step-by-step?",
+      answer: "Setup takes 5-10 minutes:\n\n1. Purchase and download the plugin from your Gumroad account\n2. Upload the .zip file via WordPress Admin > Plugins > Add New > Upload Plugin\n3. Activate the plugin\n4. Go to the Geocentric settings page in your WordPress dashboard\n5. Enter your target city/location\n6. Select which data types to display (weather, demographics, etc.)\n7. Copy the generated shortcodes for your location\n8. Paste the shortcodes into any page or post where you want the location data to appear\n\nThe plugin automatically pulls and displays all relevant location information."
     },
     {
-      question: "How fresh and accurate is the location data?",
-      answer: "All data is pulled in real-time or refreshed daily depending on the data type. Weather information updates every few hours, while demographic and business data refreshes weekly. Historical information and neighborhood details are verified against multiple authoritative sources. If you notice any outdated information, our support team can trigger manual updates."
+      question: "How does Geocentric Plugin compare to competitors?",
+      answer: "Geocentric Plugin leads the market:\n\n• vs. LocationPress: Limited to business listings only\n• vs. WP Store Locator: Only handles store locations\n• vs. GeoDirectory: Complex directory setup required\n• vs. MapPress: Just maps, no SEO location data\n• vs. Local SEO Pack: Basic schema markup only\n\nGeocentric is the only plugin that:\n✓ Automatically pulls 7 comprehensive data types from Google APIs\n✓ Requires zero manual input\n✓ Works for any location worldwide\n✓ Specifically optimizes for local search rankings with embedded location content"
     },
     {
-      question: "Can I customize which data appears on my location pages?",
-      answer: "You have control over which of the 7 data types to display and can customize the basic layout and styling to match your brand. However, the plugin automatically selects the most relevant neighborhoods and local information based on your chosen location. Maps display with standard settings optimized for local SEO impact."
+      question: "What are the integration examples and shortcode usage?",
+      answer: "After setting up your location, the plugin generates unique shortcodes for each data type. Use these shortcodes to embed location data anywhere on your site:\n\n• Weather Data: [geocentric_weather id=\"your-location-id\"]\n• Location About/Demographics: [geocentric_about id=\"your-location-id\"]\n• Neighborhoods: [geocentric_neighborhoods id=\"your-location-id\"]\n• Things To Do: [geocentric_thingstodo id=\"your-location-id\"]\n• Bus Stops/Transit: [geocentric_busstops id=\"your-location-id\"]\n• Interactive Map: [geocentric_mapembed id=\"your-location-id\"]\n\nEach location you create gets its own unique ID. Simply copy the shortcodes from your Geocentric dashboard and paste them into any page, post, or widget area."
     },
     {
-      question: "Do you offer a free trial, and what's the setup process like?",
-      answer: "Yes, we offer free trials on request - just contact our support team. Setup typically takes 5-10 minutes: install the WordPress plugin, enter your target locations, choose your data preferences, and embed the content using shortcodes. No coding knowledge required. Our team provides setup assistance and can even handle the initial configuration for agency clients."
+      question: "What performance improvements can I expect?",
+      answer: "Based on user data: 89% see local pack improvements within 30 days, average ranking boost of 3.2 positions for local keywords, 73% achieve page 1 rankings for geo-targeted terms within 60 days. Typical results include 40-60% increase in local search visibility, 25-35% more website traffic from local searches, and 15-20% improvement in local conversion rates. Performance varies by competition level and implementation scope."
     },
     {
-      question: "What happens if I want to target multiple cities or expand later?",
-      answer: "Easy! You can add unlimited locations with any plan. Simply enter new cities/towns in the WordPress dashboard, and the plugin automatically pulls all relevant data. This is perfect for businesses with multiple service areas, franchises, or agencies managing clients across different markets. Bulk location import is available for larger implementations."
+      question: "What are the most common use cases by industry?",
+      answer: "Dental practices: Create location pages for each service area with local demographics and directions. Plumbing/HVAC: Embed weather data and service area maps to show local expertise. Legal firms: Display local history and population data to establish community connection. Real estate: Show neighborhood information and local attractions for property listings. Franchises: Automate location pages for all franchise locations with local bus routes and directions. Marketing agencies: Scale location page creation for multiple clients across different markets."
     },
     {
-      question: "Is there white-label licensing available for agencies and resellers?",
-      answer: "Yes! We offer white-label solutions for agencies, allowing you to rebrand the plugin and offer it to your clients under your own name. Volume discounts are available for bulk purchases. Contact our team to discuss custom pricing, co-branding options, and agency partnership opportunities."
+      question: "What should I do if I encounter issues?",
+      answer: "Common solutions: If location data isn't loading, check that your city name is spelled correctly and try variations (e.g., 'NYC' vs 'New York City'). If shortcodes display as text, ensure the plugin is activated and try clearing your cache. For styling issues, check your theme's CSS isn't overriding plugin styles - add custom CSS in Appearance > Customize. If maps don't display, verify your WordPress site has internet connectivity. For bulk location imports not working, ensure your CSV file follows the required format (City, State, Country columns). Contact support with your WordPress version and specific error messages for faster resolution."
     }
   ]
 
@@ -429,32 +428,6 @@ export default function GeocentricPluginPage() {
 
   return (
     <>
-      <Head>
-        <title>Geocentric Plugin - WordPress Local SEO Plugin | Embed Google Location Data for Better Rankings</title>
-        <meta name="description" content="Boost local SEO with Geocentric Plugin for WordPress. Automatically embed Google location data: weather, demographics, maps, directions. 1,100+ activations. Start free trial." />
-        <meta name="keywords" content="local SEO plugin, WordPress SEO, location data, Google maps, local search rankings, geocentric plugin, SEO tools" />
-        <meta property="og:title" content="Geocentric Plugin - WordPress Local SEO Plugin | Embed Google Location Data" />
-        <meta property="og:description" content="Boost local SEO with Geocentric Plugin for WordPress. Automatically embed Google location data: weather, demographics, maps, directions. 1,100+ activations." />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://seorockettools.com/products/geocentric-plugin" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Geocentric Plugin - WordPress Local SEO Plugin" />
-        <meta name="twitter:description" content="Boost local SEO with Geocentric Plugin. Automatically embed Google location data for better local search rankings." />
-        <link rel="canonical" href="https://seorockettools.com/products/geocentric-plugin" />
-        
-        {/* Preload critical assets */}
-        <link
-          rel="preload"
-          href={isDarkMode ? "/seo-rocket-light.svg" : "/seo-rocket-dark.svg"}
-          as="image"
-        />
-        <link
-          rel="preload"
-          href="/geocentric-demo.gif"
-          as="image"
-        />
-      </Head>
-      
       <main className={`min-h-screen transition-colors duration-300 ${themeClasses}`}>
         {/* Theme Switcher */}
         <div className="fixed top-6 left-6 z-50 flex gap-3">
