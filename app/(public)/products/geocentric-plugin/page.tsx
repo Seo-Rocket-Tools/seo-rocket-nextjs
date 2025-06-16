@@ -15,14 +15,14 @@ const TestimonialsSection = dynamic<TestimonialsSectionProps>(() => import('./co
   loading: () => (
     <div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-96 rounded-xl"></div>
   ),
-  ssr: false
+  ssr: true
 })
 
 const FAQSection = dynamic<FAQSectionProps>(() => import('./components/FAQSection'), {
   loading: () => (
     <div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-96 rounded-xl"></div>
   ),
-  ssr: false
+  ssr: true
 })
 
 export default function GeocentricPluginPage() {
@@ -773,22 +773,13 @@ export default function GeocentricPluginPage() {
           </div>
         </section>
 
-        {/* FAQ Section - Dynamically Loaded */}
-        <Suspense fallback={
-          <div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-96 rounded-xl">
-            <div className="max-w-4xl mx-auto px-4 py-16">
-              <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/3 mx-auto mb-4"></div>
-              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-2/3 mx-auto"></div>
-            </div>
-          </div>
-        }>
-          <FAQSection 
-            isDarkMode={isDarkMode}
-            faqs={faqs}
-            openFaq={openFaq}
-            setOpenFaq={setOpenFaq}
-          />
-        </Suspense>
+        {/* FAQ Section - Server Side Rendered */}
+        <FAQSection 
+          isDarkMode={isDarkMode}
+          faqs={faqs}
+          openFaq={openFaq}
+          setOpenFaq={setOpenFaq}
+        />
 
         {/* CTA Section */}
         <section className="px-4 sm:px-6 py-16 sm:py-20 relative z-10">

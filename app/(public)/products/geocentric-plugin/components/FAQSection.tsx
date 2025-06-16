@@ -54,18 +54,22 @@ export default function FAQSection({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              {openFaq === index && (
-                <div className={`px-6 pb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <div className="leading-relaxed">
-                    {faq.answer.split('\n').map((line, lineIndex) => (
-                      <React.Fragment key={lineIndex}>
-                        {line}
-                        {lineIndex < faq.answer.split('\n').length - 1 && <br />}
-                      </React.Fragment>
-                    ))}
-                  </div>
+              <div 
+                className={`px-6 transition-all duration-300 ease-in-out overflow-hidden ${
+                  openFaq === index 
+                    ? 'pb-6 max-h-96 opacity-100' 
+                    : 'pb-0 max-h-0 opacity-0'
+                } ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}
+              >
+                <div className="leading-relaxed">
+                  {faq.answer.split('\n').map((line, lineIndex) => (
+                    <React.Fragment key={lineIndex}>
+                      {line}
+                      {lineIndex < faq.answer.split('\n').length - 1 && <br />}
+                    </React.Fragment>
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>
