@@ -127,8 +127,6 @@ export default function GeocentricPluginPage() {
         return isPriceAnnual 
           ? `${baseUrl}geocentric-plugin-professional-annual${suffix}`
           : `${baseUrl}geocentric-plugin-professional-monthly${suffix}`
-      case 'agency':
-        return `${baseUrl}geocentric-plugin-agency-lifetime${suffix}`
       default:
         return '#'
     }
@@ -391,7 +389,7 @@ export default function GeocentricPluginPage() {
       annualPrice: 490,
       lifetimePrice: null,
       features: [
-        "100 Site Activations",
+        "200 Site Activations",
         "All 7 types of location data",
         "Weather, history, population",
         "Bus stops & directions",
@@ -399,22 +397,6 @@ export default function GeocentricPluginPage() {
         "Priority email support"
       ],
       popular: true
-    },
-    {
-      name: "Agency",
-      description: "Built for agencies and large organizations",
-      monthlyPrice: null,
-      annualPrice: null,
-      lifetimePrice: 297,
-      features: [
-        "200 Site Activations",
-        "Unlimited location pages",
-        "All data types included",
-        "White-label options",
-        "Priority support",
-        "Bulk activation tools"
-      ],
-      popular: false
     }
   ]
 
@@ -698,7 +680,7 @@ export default function GeocentricPluginPage() {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               {pricing.map((plan, index) => (
                 <div
                   key={index}
