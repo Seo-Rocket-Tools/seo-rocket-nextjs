@@ -522,6 +522,7 @@ export default function GeocentricPluginPage() {
                       height={675}
                       className="w-full h-auto object-cover"
                       priority
+                      unoptimized={true}
                     />
                   </div>
                 </div>
